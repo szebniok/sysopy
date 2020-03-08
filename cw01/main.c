@@ -11,10 +11,12 @@ int main() {
     filenames[3] = "b.txt";
     compare_files(filenames, 4);
 
-    EditingOps** container = create_container(2);
-    create_block(container);
+    Container container = create_container(2);
+    create_block(&container);
+
+    delete_diff(&container, 1);
+    delete_block(container.diffs[0], 1);
 
     system("rm .tmp");
     free(filenames);
-    free(container);
 }

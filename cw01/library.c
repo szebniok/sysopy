@@ -7,11 +7,15 @@ int cIndex = 0;
 
 const char* TMP_FILENAME = ".tmp";
 
-EditingOps** create_container(int size) {
-    EditingOps** retval = calloc(size, sizeof(EditingOps*));
+Container create_container(int size) {
+    FileDiff** diffs = calloc(size, sizeof(FileDiff*));
     for (int i = 0; i < size; i++) {
-        retval[i] = NULL;
+        diffs[i] = NULL;
     }
+
+    Container retval;
+    retval.diffs = diffs;
+    retval.size = 0;
     return retval;
 }
 
@@ -29,29 +33,37 @@ void compare_files(char** filenames, int size) {
     }
 }
 
-int create_block(EditingOps** container) {
+int create_block(Container* container) {
+    int first_created_diff_index = container->size;
+
     FILE* tmp_file = fopen(TMP_FILENAME, "rw");
     char* line = NULL;
     size_t line_size = 0;
     char* ops = NULL;
 
     int block_count = 0;
-    EditingOps* current_diff = calloc(0, sizeof(EditingOps));
+    EditingOps* current_file_blocks = calloc(0, sizeof(EditingOps));
+
     while (getline(&line, &line_size, tmp_file) != -1) {
         if (line[0] == 'n') {
             if (strlen(ops) > 0) {
-                current_diff[block_count - 1].ops = ops;
+                current_file_blocks[block_count - 1].ops = ops;
             }
-            container[cIndex++] = current_diff;
-            current_diff = calloc(0, sizeof(EditingOps));
+            FileDiff* file_diff = calloc(1, sizeof(FileDiff));
+            file_diff->blocks = current_file_blocks;
+            file_diff->size = block_count;
+            container->diffs[container->size++] = file_diff;
+
+            current_file_blocks = calloc(0, sizeof(EditingOps));
             block_count = 0;
         } else if ('0' <= line[0] && line[0] <= '9') {
             if (block_count > 0) {
-                current_diff[block_count - 1].ops = ops;
+                current_file_blocks[block_count - 1].ops = ops;
             }
+
             block_count++;
-            current_diff =
-                realloc(current_diff, block_count * sizeof(EditingOps));
+            current_file_blocks =
+                realloc(current_file_blocks, block_count * sizeof(EditingOps));
             ops = calloc(1000000, sizeof(char));
             strcpy(ops, line);
         } else {
@@ -60,7 +72,31 @@ int create_block(EditingOps** container) {
     }
 
     free(line);
-    fclose(tmp_file);
+    // fclose(tmp_file);
 
-    return 0;
+    return first_created_diff_index;
+}
+
+int block_count(FileDiff* file_diff) { return file_diff->size; }
+
+void delete_block(FileDiff* file_diff, int index) {
+    if (index < 0 || index > file_diff->size - 1) return;
+    for (int i = index + 1; i < file_diff->size; i++) {
+        file_diff->blocks[i - 1] = file_diff->blocks[i];
+    }
+
+    file_diff->size--;
+    file_diff->blocks =
+        realloc(file_diff->blocks, file_diff->size * sizeof(EditingOps));
+}
+
+void delete_diff(Container* container, int index) {
+    if (index < 0 || index > container->size - 1) return;
+    for (int i = index + 1; i < container->size; i++) {
+        container->diffs[i - 1] = container->diffs[i];
+    }
+
+    container->size--;
+    container->diffs =
+        realloc(container->diffs, container->size * sizeof(FileDiff*));
 }
