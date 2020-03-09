@@ -5,6 +5,10 @@
 #include <unistd.h>
 #include "library.h"
 
+#ifdef DYNAMIC
+#include <dlfcn.h>
+#endif
+
 double time_in_seconds(clock_t start, clock_t end) {
     return (double)(end - start) / sysconf(_SC_CLK_TCK);
 }
@@ -16,6 +20,15 @@ int main(int argc, char* argv[]) {
     clock_t start_time = times(&start_tms);
 
     if (argc < 2) return 1;
+
+#ifdef DYNAMIC
+    void* lib_handle = dlopen("./liblibrary.so", RTLD_LAZY);
+    Container (*create_container)(int) = dlsym(lib_handle, "create_container");
+    void (*compare_files)(char**, int) = dlsym(lib_handle, "compare_files");
+    int (*create_block)(Container*) = dlsym(lib_handle, "create_block");
+    void (*delete_diff)(Container*, int) = dlsym(lib_handle, "delete_diff");
+    void (*delete_block)(FileDiff*, int) = dlsym(lib_handle, "delete_block");
+#endif
 
     int main_table_count = atoi(argv[1]);
 
@@ -66,6 +79,10 @@ int main(int argc, char* argv[]) {
            time_in_seconds(start_tms.tms_utime, end_tms.tms_utime));
     printf("sys:  %f\n",
            time_in_seconds(start_tms.tms_stime, end_tms.tms_stime));
+
+#ifdef DYNAMIC
+    dlclose(lib_handle);
+#endif
 
     return 0;
 }
