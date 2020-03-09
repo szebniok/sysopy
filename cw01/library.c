@@ -22,15 +22,14 @@ Container create_container(int size) {
 
 void compare_files(char** filenames, int size) {
     for (int i = 0; i < size; i += 2) {
-        char* buffer = calloc(
-            sizeof("diff  >>") + strlen(filenames[0]) + strlen(filenames[1]),
-            sizeof(char));
+        char buffer[100] = {0};
         sprintf(buffer, "diff %s %s>>%s", filenames[0], filenames[1],
                 TMP_FILENAME);
-        system(buffer);
+        if (system(buffer))
+            ;
         sprintf(buffer, "printf \"n\\n\">>%s", TMP_FILENAME);
-        system(buffer);
-        free(buffer);
+        if (system(buffer))
+            ;
     }
 }
 
@@ -74,10 +73,11 @@ int create_block(Container* container) {
 
     free(line);
 
-    fclose(tmp_file);
+    // fclose(tmp_file);
     char* buffer = calloc(100, sizeof(char));
     sprintf(buffer, "rm %s", TMP_FILENAME);
-    system(buffer);
+    if (system(buffer))
+        ;
     free(buffer);
 
     return first_created_diff_index;

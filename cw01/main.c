@@ -34,12 +34,25 @@ int main(int argc, char* argv[]) {
 
     Container container = create_container(main_table_count);
 
+    printf("\n");
+
+    struct tms cmd_start_tms;
+    struct tms cmd_end_tms;
+    clock_t cmd_start;
+    clock_t cmd_end;
+
     int i = 2;
     while (i < argc) {
+        cmd_start = times(&cmd_start_tms);
+
         char* instruction = argv[i++];
         if (strcmp(instruction, "create_table") == 0) {
             int size = atoi(argv[i++]);
+            for (int i = 0; i < container.size; i++) {
+                delete_diff(&container, 0);
+            }
             container = create_container(size);
+            printf("create_table %d\n", size);
         } else if (strcmp(instruction, "compare_pairs") == 0) {
             do {
                 char* filenames_pair = argv[i++];
@@ -56,25 +69,37 @@ int main(int argc, char* argv[]) {
 
                 char* filenames[] = {filenameA, filenameB};
                 compare_files(filenames, 2);
+
+                printf("compare_pairs %s:%s\n", filenameA, filenameB);
             } while (i < argc && strchr(argv[i], ':') != NULL);
-        } else if (strcmp(instruction, "create_block") == 0) {
+        } else if (strcmp(instruction, "create_blocks") == 0) {
             create_block(&container);
+            printf("create_blocks\n");
         } else if (strcmp(instruction, "remove_block") == 0) {
             int block_index = atoi(argv[i++]);
             delete_diff(&container, block_index);
+            printf("remove_block %d\n", block_index);
         } else if (strcmp(instruction, "remove_operation") == 0) {
             int block_index = atoi(argv[i++]);
             int operation_index = atoi(argv[i++]);
             delete_block(container.diffs[block_index], operation_index);
+            printf("remove_block %d %d\n", block_index, operation_index);
         } else {
             printf("invalid operation: %s\n", instruction);
             return 1;
         }
+
+        cmd_end = times(&cmd_end_tms);
+        printf("real: %f, ", time_in_seconds(cmd_start, cmd_end));
+        printf("user: %f, ",
+               time_in_seconds(cmd_start_tms.tms_utime, cmd_end_tms.tms_utime));
+        printf("sys:  %f\n\n",
+               time_in_seconds(cmd_start_tms.tms_stime, cmd_end_tms.tms_stime));
     }
 
     clock_t end_time = times(&end_tms);
 
-    printf("real: %f\n", time_in_seconds(start_time, end_time));
+    printf("total:\nreal: %f\n", time_in_seconds(start_time, end_time));
     printf("user: %f\n",
            time_in_seconds(start_tms.tms_utime, end_tms.tms_utime));
     printf("sys:  %f\n",
