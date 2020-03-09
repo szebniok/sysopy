@@ -72,7 +72,12 @@ int create_block(Container* container) {
     }
 
     free(line);
-    // fclose(tmp_file);
+
+    fclose(tmp_file);
+    char* buffer = calloc(100, sizeof(char));
+    sprintf(buffer, "rm %s", TMP_FILENAME);
+    system(buffer);
+    free(buffer);
 
     return first_created_diff_index;
 }
@@ -81,9 +86,14 @@ int block_count(FileDiff* file_diff) { return file_diff->size; }
 
 void delete_block(FileDiff* file_diff, int index) {
     if (index < 0 || index > file_diff->size - 1) return;
+
+    EditingOps block_to_be_deleted = file_diff->blocks[index];
+
     for (int i = index + 1; i < file_diff->size; i++) {
         file_diff->blocks[i - 1] = file_diff->blocks[i];
     }
+
+    free(block_to_be_deleted.ops);
 
     file_diff->size--;
     file_diff->blocks =
@@ -92,11 +102,19 @@ void delete_block(FileDiff* file_diff, int index) {
 
 void delete_diff(Container* container, int index) {
     if (index < 0 || index > container->size - 1) return;
+
+    FileDiff* diff_to_be_deleted = container->diffs[index];
+
     for (int i = index + 1; i < container->size; i++) {
         container->diffs[i - 1] = container->diffs[i];
     }
 
+    container->diffs[container->size - 1] = NULL;
+
+    while (diff_to_be_deleted->size > 0) {
+        delete_block(diff_to_be_deleted, 0);
+    }
+    free(diff_to_be_deleted);
+
     container->size--;
-    container->diffs =
-        realloc(container->diffs, container->size * sizeof(FileDiff*));
 }
