@@ -1,4 +1,7 @@
 # cw01
-cw01/main
-cw01/*.txt
-cw01/.tmp
+cw01/**/main
+cw01/**/*.txt
+cw01/**/.tmp
+cw01/**/*.a
+cw01/**/*.o
+cw01/**/*.so

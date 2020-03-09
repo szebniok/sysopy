@@ -1,9 +1,8 @@
-OPT ?= -O0
 CC = gcc 
-CFLAGS = -Wall -Werror -std=c11 -g $(OPT)
+CFLAGS = -Wall -Werror -std=c11 -g
 
 .PHONY: all
-all: static
+all: run_all_tests
 
 .PHONY: static
 static:
@@ -113,72 +112,22 @@ repeated:
 
 .PHONY: run_all_tests
 run_all_tests:
-	echo "*** small ***" >> raport3b.txt
-	make -s small >> raport3b.txt
-	echo "" >> raport3b.txt
-	echo "*** medium ***" >> raport3b.txt
-	make -s medium >> raport3b.txt
-	echo "" >> raport3b.txt
-	echo "*** big ***" >> raport3b.txt
-	make -s big >> raport3b.txt
-	echo "" >> raport3b.txt
-	echo "*** almost_same ***" >> raport3b.txt
-	make -s almost_same >> raport3b.txt
-	echo "" >> raport3b.txt
-	echo "*** very_different ***" >> raport3b.txt
-	make -s very_different >> raport3b.txt
-	echo "" >> raport3b.txt
-	echo "*** repeated ***" >> raport3b.txt
-	make -s repeated >> raport3b.txt
-	echo "" >> raport3b.txt
-
-
-.PHONY: static_tests
-static_tests:
-	make clean
-	make static
-	echo "----------------" >> raport3b.txt
-	echo "    STATIC $(OPT)   " >> raport3b.txt
-	echo "----------------" >> raport3b.txt
-
-	make -s run_all_tests
-
-.PHONY: shared_tests
-shared_tests: 
-	make clean
-	make shared
-	echo "----------------" >> raport3b.txt
-	echo "    SHARED $(OPT)   " >> raport3b.txt
-	echo "----------------" >> raport3b.txt
-
-	make -s run_all_tests
-
-.PHONY: dynamic_tests
-dynamic_tests: 
-	make clean
-	make dynamic
-	echo "----------------" >> raport3b.txt
-	echo "    DYNAMIC $(OPT)   " >> raport3b.txt
-	echo "----------------" >> raport3b.txt
-
-	make -s run_all_tests
-
-.PHONY: run_all_configurations
-run_all_configurations:
-	make -s static_tests OPT=-O0
-	make -s shared_tests OPT=-O0
-	make -s dynamic_tests OPT=-O0
-
-	echo "------------------------------------------------" >> raport3b.txt
-	echo "" >> raport3b.txt
-
-	make -s static_tests OPT=-O2
-	make -s shared_tests OPT=-O2
-	make -s dynamic_tests OPT=-O2
-
-	echo "------------------------------------------------" >> raport3b.txt
-	echo "" >> raport3b.txt
-
-	make -s static_tests OPT=-Os
-	make -s shared_tests OPT=-Os
-	make -s dynamic_tests OPT=-Os
+	rm -f raport2.txt
+	echo "*** small ***" >> raport2.txt
+	make -s small >> raport2.txt
+	echo "" >> raport2.txt
+	echo "*** medium ***" >> raport2.txt
+	make -s medium >> raport2.txt
+	echo "" >> raport2.txt
+	echo "*** big ***" >> raport2.txt
+	make -s big >> raport2.txt
+	echo "" >> raport2.txt
+	echo "*** almost_same ***" >> raport2.txt
+	make -s almost_same >> raport2.txt
+	echo "" >> raport2.txt
+	echo "*** very_different ***" >> raport2.txt
+	make -s very_different >> raport2.txt
+	echo "" >> raport2.txt
+	echo "*** repeated ***" >> raport2.txt
+	make -s repeated >> raport2.txt
+	echo "" >> raport2.txt
