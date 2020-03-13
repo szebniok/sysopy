@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include "lib_records.h"
+#include "sys_records.h"
 
 int main() {
-    lib_generate("tmp", 10, 2);
-    lib_copy("tmp", "tmp2", 10, 2);
-    lib_sort("tmp", 10, 2);
+    sys_generate("tmp", 10, 2);
+    sys_copy("tmp", "tmp2", 10, 2);
+    sys_sort("tmp", 10, 2);
 }

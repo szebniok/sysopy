@@ -7,7 +7,7 @@
     if (x) {      \
     };
 
-void quickSort(int low, int high, FILE* file, int record_size);
+void lib_quicksort(int low, int high, FILE* file, int record_size);
 
 void lib_generate(char* filename, int records_count, int record_size) {
     char* buffer = calloc(strlen(filename) + 100, sizeof(char));
@@ -19,7 +19,7 @@ void lib_generate(char* filename, int records_count, int record_size) {
 
 void lib_sort(char* filename, int records_count, int record_size) {
     FILE* file = fopen(filename, "rwb+");
-    quickSort(0, records_count - 1, file, record_size);
+    lib_quicksort(0, records_count - 1, file, record_size);
     fclose(file);
 }
 
@@ -45,7 +45,7 @@ void lib_copy(char* src_filename, char* dst_filename, int records_count,
     free(buffer);
 }
 
-void swap(int a, int b, FILE* file, int record_size) {
+void lib_swap(int a, int b, FILE* file, int record_size) {
     char* a_content = calloc(record_size, sizeof(char));
     char* b_content = calloc(record_size, sizeof(char));
 
@@ -63,7 +63,7 @@ void swap(int a, int b, FILE* file, int record_size) {
     free(b_content);
 }
 
-int partition(int low, int high, FILE* file, int record_size) {
+int lib_partition(int low, int high, FILE* file, int record_size) {
     int pivot = high;
     char* pivot_content = NULL;
 
@@ -88,7 +88,7 @@ int partition(int low, int high, FILE* file, int record_size) {
             j_content = NULL;
 
             i++;
-            swap(i, j, file, record_size);
+            lib_swap(i, j, file, record_size);
         }
 
         if (pivot_content != NULL) {
@@ -101,15 +101,15 @@ int partition(int low, int high, FILE* file, int record_size) {
             j_content = NULL;
         }
     }
-    swap(i + 1, high, file, record_size);
+    lib_swap(i + 1, high, file, record_size);
     return i + 1;
 }
 
-void quickSort(int low, int high, FILE* file, int record_size) {
+void lib_quicksort(int low, int high, FILE* file, int record_size) {
     if (low < high) {
-        int pi = partition(low, high, file, record_size);
+        int pi = lib_partition(low, high, file, record_size);
 
-        quickSort(low, pi - 1, file, record_size);
-        quickSort(pi + 1, high, file, record_size);
+        lib_quicksort(low, pi - 1, file, record_size);
+        lib_quicksort(pi + 1, high, file, record_size);
     }
 }
