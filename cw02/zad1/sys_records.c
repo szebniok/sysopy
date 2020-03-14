@@ -12,14 +12,6 @@
 
 void sys_quicksort(int low, int high, int file, int record_size);
 
-void sys_generate(char* filename, int records_count, int record_size) {
-    char* buffer = calloc(strlen(filename) + 100, sizeof(char));
-    sprintf(buffer, "head -c %d /dev/random > %s", records_count * record_size,
-            filename);
-    UNUSED(system(buffer));
-    free(buffer);
-}
-
 void sys_sort(char* filename, int records_count, int record_size) {
     int file = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
     sys_quicksort(0, records_count - 1, file, record_size);
