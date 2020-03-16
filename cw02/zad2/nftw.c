@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include <dirent.h>
+#include <ftw.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,10 +15,11 @@ typedef struct {
     char op;
 } arg_number;
 
+int max_depth = -1;
 arg_number* mtime = NULL;
 arg_number* atime = NULL;
 
-bool should_display(struct stat* stat) {
+bool should_display(const struct stat* stat) {
     int current_time = time(NULL);
     int mdays = (stat->st_mtim.tv_sec - current_time) / (60 * 60 * 24);
     int adays = (stat->st_atim.tv_sec - current_time) / (60 * 60 * 24);
@@ -45,7 +47,7 @@ bool should_display(struct stat* stat) {
     return retval;
 }
 
-char* get_file_type(struct stat* stat) {
+char* get_file_type(const struct stat* stat) {
     if (S_ISDIR(stat->st_mode)) return "dir";
     if (S_ISCHR(stat->st_mode)) return "char dev";
     if (S_ISBLK(stat->st_mode)) return "block dev";
@@ -59,48 +61,28 @@ char* get_absolute_path(char* filename) { return realpath(filename, NULL); }
 
 char* format_date(struct timespec date) { return ctime(&date.tv_sec); }
 
-void explore_directory(char* directory_path, int max_depth) {
-    if (max_depth == 0) return;
-    chdir(directory_path);
-    char* absolute_directory_path = get_absolute_path(".");
+int nftw_callback(const char* file_path, const struct stat* stat, int typeflag,
+                  struct FTW* ftw) {
+    if (max_depth != -1 && ftw->level > max_depth) return 0;
 
-    DIR* directory_stream = opendir(".");
-    struct dirent* dir;
-    while ((dir = readdir(directory_stream)) != NULL) {
-        if (strcmp(dir->d_name, "..") == 0 || strcmp(dir->d_name, ".") == 0) {
-            continue;
-        }
+    if (!should_display(stat)) return 0;
 
-        char* absolute_path =
-            calloc(strlen(absolute_directory_path) + strlen(dir->d_name) + 2,
-                   sizeof(char));
-        sprintf(absolute_path, "%s/%s", absolute_directory_path, dir->d_name);
-
-        struct stat file_stat;
-        lstat(dir->d_name, &file_stat);
-
-        if (!should_display(&file_stat)) continue;
-
-        printf("%s", absolute_path);
-        if (S_ISLNK(file_stat.st_mode)) {
-            char* tmp = realpath(absolute_path, NULL);
-            printf(" -> %s", tmp);
-            free(tmp);
-        }
-        printf("\ntype: %s", get_file_type(&file_stat));
-        printf(", links: %ld", file_stat.st_nlink);
-        printf(", size: %ld bytes\n", file_stat.st_size);
-        printf("access: %s", format_date(file_stat.st_atim));
-        printf("modify: %s\n", format_date(file_stat.st_mtim));
-
-        if (S_ISDIR(file_stat.st_mode)) {
-            explore_directory(absolute_path, max_depth - 1);
-            chdir(directory_path);
-        }
-        free(absolute_path);
+    printf("%s", file_path);
+    if (S_ISLNK(stat->st_mode)) {
+        char* tmp = realpath(file_path, NULL);
+        printf(" -> %s", tmp);
+        free(tmp);
     }
-    closedir(directory_stream);
-    free(absolute_directory_path);
+    printf("\ntype: %s", get_file_type(stat));
+    printf(", links: %ld", stat->st_nlink);
+    printf(", size: %ld bytes\n", stat->st_size);
+    printf("access: %s", format_date(stat->st_atim));
+    printf("modify: %s\n", format_date(stat->st_mtim));
+
+    // ignore unused warning
+    (void)typeflag;
+
+    return 0;
 }
 
 int main(int argc, char* argv[]) {
@@ -110,7 +92,6 @@ int main(int argc, char* argv[]) {
     }
 
     char* path = get_absolute_path(argv[1]);
-    int max_depth = -1;
 
     for (int i = 2; i < argc; i += 2) {
         if (strcmp(argv[i], "-mtime") == 0) {
@@ -140,7 +121,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    explore_directory(path, max_depth);
+    nftw(path, nftw_callback, 7, FTW_PHYS);
     free(path);
     free(mtime);
     free(atime);

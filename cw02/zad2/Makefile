@@ -5,22 +5,33 @@ src = $(wildcard *.c)
 obj = $(src:.c=.o)
 
 .PHONY: all
-all: run
+all: test_main test_nftw
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-main: $(obj)
+main: main.o
+	$(CC) $(CFLAGS) $^ -o $@
+
+nftw: nftw.o
 	$(CC) $(CFLAGS) $^ -o $@
 
 .PHONY: clean
 clean:
-	rm -f $(obj) main
+	rm -f $(obj) main nftw
 	rm -rf test
 
 .PHONY: run
 run: main
 	./main
+
+.PHONY: test_main
+test_main: setup_test_folders main
+	./main test -maxdepth 3
+
+.PHONY: test_nftw
+test_nftw: setup_test_folders nftw
+	./nftw test -maxdepth 3
 
 .PHONY: setup_test_folders
 setup_test_folders:
