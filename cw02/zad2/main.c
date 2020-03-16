@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include <dirent.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +8,43 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+
+typedef struct {
+    int value;
+    char op;
+} arg_number;
+
+int depth = -1;
+arg_number* mtime = NULL;
+arg_number* atime = NULL;
+
+bool should_display(struct stat* stat) {
+    int current_time = time(NULL);
+    int mdays = (stat->st_mtim.tv_sec - current_time) / (60 * 60 * 24);
+    int adays = (stat->st_atim.tv_sec - current_time) / (60 * 60 * 24);
+    bool retval = true;
+
+    if (mtime) {
+        if (mtime->op == '=') {
+            retval = retval && mdays == mtime->value;
+        } else if (mtime->op == '-') {
+            retval = retval && mdays < mtime->value;
+        } else {
+            retval = retval && mdays > mtime->value;
+        }
+    }
+    if (atime) {
+        if (atime->op == '=') {
+            retval = retval && adays == atime->value;
+        } else if (atime->op == '-') {
+            retval = retval && adays < atime->value;
+        } else {
+            retval = retval && adays > atime->value;
+        }
+    }
+
+    return retval;
+}
 
 char* get_file_type(struct stat* stat) {
     if (S_ISDIR(stat->st_mode)) return "dir";
@@ -42,6 +80,8 @@ void explore_directory(char* directory_path, int max_depth) {
         struct stat file_stat;
         lstat(dir->d_name, &file_stat);
 
+        if (!should_display(&file_stat)) continue;
+
         printf("%s", absolute_path);
         if (S_ISLNK(file_stat.st_mode)) {
             char* tmp = realpath(absolute_path, NULL);
@@ -68,18 +108,37 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "You have to call this function with a path");
         return 1;
     }
-    char* path = get_absolute_path(argv[1]);
 
-    int max_depth = -1;
+    char* path = get_absolute_path(argv[1]);
 
     for (int i = 2; i < argc; i += 2) {
         if (strcmp(argv[i], "-mtime") == 0) {
+            if (mtime) free(mtime);
+            mtime = calloc(1, sizeof(arg_number));
+
+            if ('0' <= argv[i + 1][0] && argv[i + 1][0] <= '9') {
+                mtime->value = atoi(argv[i + 1]);
+                mtime->op = '=';
+            } else {
+                mtime->value = atoi(argv[i + 1] + 1);
+                mtime->op = argv[i + 1][0];
+            }
         } else if (strcmp(argv[i], "-atime") == 0) {
+            if (atime) free(atime);
+            atime = calloc(1, sizeof(arg_number));
+
+            if ('0' <= argv[i + 1][0] && argv[i + 1][0] <= '9') {
+                atime->value = atoi(argv[i + 1]);
+                atime->op = '=';
+            } else {
+                atime->value = atoi(argv[i + 1] + 1);
+                atime->op = argv[i + 1][0];
+            }
         } else {
-            max_depth = atoi(argv[i + 1]);
+            depth = atoi(argv[i + 1]);
         }
     }
 
-    explore_directory(path, max_depth);
+    explore_directory(path, depth);
     free(path);
 }
