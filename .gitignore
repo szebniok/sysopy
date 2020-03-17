@@ -12,3 +12,4 @@ cw02/**/*.o
 cw02/**/tmp*
 cw02/**/*.txt
 cw02/**/test
+cw02/**/nftw
