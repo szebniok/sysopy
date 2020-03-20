@@ -13,6 +13,9 @@ all: run
 macierz: macierz.o
 	$(CC) $(CFLAGS) $^ -o $@
 
+helper: helper.o
+	$(CC) $(CFLAGS) $^ -o $@
+
 .PHONY: clean
 clean:
 	rm -f $(obj) macierz

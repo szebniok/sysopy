@@ -16,5 +16,9 @@ cw02/**/nftw
 
 #cw03
 cw03/**/main
+cw03/**/macierz
 cw03/**/test
 cw03/**/*.o
+cw03/**/*.txt
+cw03/**/lista
+cw03/**/helper
