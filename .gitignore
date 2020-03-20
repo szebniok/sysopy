@@ -13,3 +13,8 @@ cw02/**/tmp*
 cw02/**/*.txt
 cw02/**/test
 cw02/**/nftw
+
+#cw03
+cw03/**/main
+cw03/**/test
+cw03/**/*.o
