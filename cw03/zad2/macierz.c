@@ -1,5 +1,6 @@
 #define _XOPEN_SOURCE 500
-#define MAX_LINE_LENGTH 2048
+#define MAX_COLS_NUMBER 1000
+#define MAX_LINE_LENGTH (MAX_COLS_NUMBER * 5)
 
 #include <linux/limits.h>
 #include <stdio.h>
