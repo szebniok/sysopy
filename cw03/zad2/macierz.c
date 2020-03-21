@@ -12,7 +12,7 @@ typedef struct {
 int get_cols_number(char* row) {
     int cols = 0;
     char* tmp = row;
-    while ((tmp = strstr(tmp, " ")) != NULL) {
+    while ((tmp = strchr(tmp, ' ')) != NULL) {
         cols++;
         tmp++;
     }
