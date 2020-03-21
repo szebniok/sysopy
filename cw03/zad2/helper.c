@@ -14,7 +14,7 @@ void generate_matrix(int rows, int cols, char* filename) {
             if (x > 0) {
                 fprintf(file, " ");
             }
-            fprintf(file, "%d", random_inclusive(0, 10));
+            fprintf(file, "%d", random_inclusive(0, 9));
         }
         fprintf(file, "\n");
     }
