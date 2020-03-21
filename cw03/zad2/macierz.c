@@ -1,4 +1,6 @@
 #define _XOPEN_SOURCE 500
+#define MAX_LINE_LENGTH 2048
+
 #include <linux/limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,11 +27,11 @@ int get_cols_number(char* row) {
 }
 
 void get_dimensions(FILE* matrix_file, int* rows, int* cols) {
-    char line[256];
+    char line[MAX_LINE_LENGTH];
     *rows = 0;
     *cols = 0;
 
-    while (fgets(line, 256, matrix_file) != NULL) {
+    while (fgets(line, MAX_LINE_LENGTH, matrix_file) != NULL) {
         if (*cols == 0) {
             *cols = get_cols_number(line);
         }
@@ -52,8 +54,8 @@ matrix load_matrix(char* filename) {
     }
 
     int x_curr, y_curr = 0;
-    char line[256];
-    while (fgets(line, 256, matrix_file) != NULL) {
+    char line[MAX_LINE_LENGTH];
+    while (fgets(line, MAX_LINE_LENGTH, matrix_file) != NULL) {
         x_curr = 0;
         char* encoded_number = strtok(line, " ");
         while (encoded_number != NULL) {
@@ -64,12 +66,21 @@ matrix load_matrix(char* filename) {
         y_curr++;
     }
 
+    fclose(matrix_file);
+
     matrix retval;
     retval.values = values;
     retval.rows = rows;
     retval.cols = cols;
 
     return retval;
+}
+
+void free_matrix(matrix* m) {
+    for (int y = 0; y < m->rows; y++) {
+        free(m->values[y]);
+    }
+    free(m->values);
 }
 
 int get_task(FILE* tasks_file, int tasks_count) {
@@ -159,6 +170,7 @@ int main(int argc, char* argv[]) {
     sprintf(encoded_tasks, "%0*d", b.cols, 0);
     fwrite(encoded_tasks, 1, b.cols, tasks_file);
     fflush(tasks_file);
+    free(encoded_tasks);
 
     pid_t* workers = calloc(workers_count, sizeof(int));
     for (int i = 0; i < workers_count; i++) {
@@ -176,6 +188,10 @@ int main(int argc, char* argv[]) {
         printf("Proces %d wykonal %d mnozen macierzy\n", workers[i],
                WEXITSTATUS(status));
     }
+    free(workers);
+    free_matrix(&a);
+    free_matrix(&b);
+    fclose(tasks_file);
 
     char buffer[256];
     sprintf(buffer, "paste .tmp/part* > %s", c_filename);
