@@ -50,7 +50,7 @@ matrix load_matrix(char* filename) {
     char line[256];
     while (fgets(line, 256, matrix_file) != NULL) {
         x_curr = 0;
-        char* encoded_number = strtok(line, " \n");
+        char* encoded_number = strtok(line, " ");
         while (encoded_number != NULL) {
             values[y_curr][x_curr++] = atoi(encoded_number);
             encoded_number = strtok(NULL, " ");
@@ -81,20 +81,9 @@ int main(int argc, char* argv[]) {
     char b_filename[PATH_MAX + 1];
     char c_filename[PATH_MAX + 1];
 
-    int first_space_index = -1;
-    for (int i = 0; input_line[i] != 0; i++) {
-        if (input_line[i] == ' ') {
-            if (first_space_index == -1) {
-                first_space_index = i;
-                strncpy(a_filename, input_line, first_space_index);
-            } else {
-                strncpy(b_filename, input_line + first_space_index + 1,
-                        i - first_space_index - 1);
-                strcpy(c_filename, input_line + i + 1);
-                break;
-            }
-        }
-    }
+    strcpy(a_filename, strtok(input_line, " "));
+    strcpy(b_filename, strtok(NULL, " "));
+    strcpy(c_filename, strtok(NULL, " "));
 
     matrix a = load_matrix(a_filename);
     printf("%dx%d\n", a.rows, a.cols);
