@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/file.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 typedef struct {
@@ -110,15 +111,19 @@ void multiply_column(matrix* a, matrix* b, int col_index) {
     fclose(part_file);
 }
 
-void worker_callback(matrix* a, matrix* b, FILE* tasks_file) {
+int worker_callback(matrix* a, matrix* b, FILE* tasks_file) {
+    int multiplies_count = 0;
     while (1) {
         int col_index = get_task(tasks_file, b->cols);
         if (col_index == -1) {
-            return;
+            break;
         }
 
         multiply_column(a, b, col_index);
+        multiplies_count++;
     }
+
+    return multiplies_count;
 }
 
 int main(int argc, char* argv[]) {
@@ -159,11 +164,17 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < workers_count; i++) {
         pid_t spawned_worker = fork();
         if (spawned_worker == 0) {
-            worker_callback(&a, &b, tasks_file);
-            return 0;
+            return worker_callback(&a, &b, tasks_file);
         } else {
             workers[i] = spawned_worker;
         }
+    }
+
+    for (int i = 0; i < workers_count; i++) {
+        int status;
+        waitpid(workers[i], &status, 0);
+        printf("Proces %d wykonal %d mnozen macierzy\n", workers[i],
+               WEXITSTATUS(status));
     }
 
     char buffer[256];
