@@ -22,4 +22,4 @@ clean:
 
 .PHONY: run
 run: macierz
-	./macierz lista
+	./macierz lista 3 10
