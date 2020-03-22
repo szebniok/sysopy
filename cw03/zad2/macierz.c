@@ -84,15 +84,16 @@ void free_matrix(matrix* m) {
     free(m->values);
 }
 
-int get_task(FILE* tasks_file, int tasks_count) {
+int get_task(int tasks_count) {
+    FILE* tasks_file = fopen(".tmp/tasks", "r+");
     int fd = fileno(tasks_file);
     flock(fd, LOCK_EX);
+
     char* tasks = calloc(tasks_count + 1, sizeof(char));
     fseek(tasks_file, 0, SEEK_SET);
     fread(tasks, 1, tasks_count, tasks_file);
 
     char* task_ptr_offset = strchr(tasks, '0');
-
     int task_index = task_ptr_offset != NULL ? task_ptr_offset - tasks : -1;
 
     if (task_index >= 0) {
@@ -103,12 +104,14 @@ int get_task(FILE* tasks_file, int tasks_count) {
     }
 
     flock(fd, LOCK_UN);
+    fclose(tasks_file);
+
     return task_index;
 }
 
 void multiply_column(matrix* a, matrix* b, int col_index) {
     char* filename = calloc(20, sizeof(char));
-    sprintf(filename, ".tmp/part%d", col_index);
+    sprintf(filename, ".tmp/part%04d", col_index);
     FILE* part_file = fopen(filename, "w+");
 
     for (int y = 0; y < a->rows; y++) {
@@ -123,10 +126,10 @@ void multiply_column(matrix* a, matrix* b, int col_index) {
     fclose(part_file);
 }
 
-int worker_callback(matrix* a, matrix* b, FILE* tasks_file) {
+int worker_callback(matrix* a, matrix* b) {
     int multiplies_count = 0;
     while (1) {
-        int col_index = get_task(tasks_file, b->cols);
+        int col_index = get_task(b->cols);
         if (col_index == -1) {
             break;
         }
@@ -172,12 +175,13 @@ int main(int argc, char* argv[]) {
     fwrite(encoded_tasks, 1, b.cols, tasks_file);
     fflush(tasks_file);
     free(encoded_tasks);
+    fclose(tasks_file);
 
     pid_t* workers = calloc(workers_count, sizeof(int));
     for (int i = 0; i < workers_count; i++) {
         pid_t spawned_worker = fork();
         if (spawned_worker == 0) {
-            return worker_callback(&a, &b, tasks_file);
+            return worker_callback(&a, &b);
         } else {
             workers[i] = spawned_worker;
         }
