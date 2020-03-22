@@ -9,6 +9,7 @@
 #include <sys/file.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 typedef struct {
@@ -16,6 +17,8 @@ typedef struct {
     int rows;
     int cols;
 } matrix;
+
+int get_elapsed_time(clock_t start_time) { return time(NULL) - start_time; }
 
 int get_cols_number(char* row) {
     int cols = 0;
@@ -126,9 +129,13 @@ void multiply_column(matrix* a, matrix* b, int col_index) {
     fclose(part_file);
 }
 
-int worker_callback(matrix* a, matrix* b) {
+int worker_callback(matrix* a, matrix* b, clock_t start_time, int timeout) {
     int multiplies_count = 0;
     while (1) {
+        if (get_elapsed_time(start_time) >= timeout) {
+            break;
+        }
+
         int col_index = get_task(b->cols);
         if (col_index == -1) {
             break;
@@ -161,7 +168,7 @@ int main(int argc, char* argv[]) {
     strcpy(c_filename, strtok(NULL, " "));
 
     int workers_count = atoi(argv[2]);
-    // int timeout = atoi(argv[3]);
+    int timeout = atoi(argv[3]);
 
     matrix a = load_matrix(a_filename);
     matrix b = load_matrix(b_filename);
@@ -177,11 +184,13 @@ int main(int argc, char* argv[]) {
     free(encoded_tasks);
     fclose(tasks_file);
 
+    time_t start_time = time(NULL);
+
     pid_t* workers = calloc(workers_count, sizeof(int));
     for (int i = 0; i < workers_count; i++) {
         pid_t spawned_worker = fork();
         if (spawned_worker == 0) {
-            return worker_callback(&a, &b);
+            return worker_callback(&a, &b, start_time, timeout);
         } else {
             workers[i] = spawned_worker;
         }
