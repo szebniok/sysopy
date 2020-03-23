@@ -108,6 +108,8 @@ int get_task(int pair_index, int tasks_count) {
         fflush(tasks_file);
     }
 
+    free(tasks);
+
     flock(fd, LOCK_UN);
     fclose(tasks_file);
 
@@ -221,7 +223,7 @@ int main(int argc, char* argv[]) {
     fclose(input_file);
     time_t start_time = time(NULL);
 
-    pid_t* workers = calloc(workers_count, sizeof(int));
+    pid_t* workers = calloc(workers_count, sizeof(pid_t));
     for (int i = 0; i < workers_count; i++) {
         pid_t spawned_worker = fork();
         if (spawned_worker == 0) {
@@ -249,6 +251,8 @@ int main(int argc, char* argv[]) {
         free_matrix(&b_matrices[i]);
         free(c_filenames[i]);
     }
+    free(a_matrices);
+    free(b_matrices);
     free(c_filenames);
 
     system("rm -rf .tmp");
