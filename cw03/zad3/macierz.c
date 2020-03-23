@@ -186,6 +186,17 @@ int number_of_lines(FILE* f) {
     return retval;
 }
 
+void print_usage(struct rusage* before, struct rusage* after) {
+    long user_sec = abs(after->ru_utime.tv_sec - before->ru_utime.tv_sec);
+    long user_micro = abs(after->ru_utime.tv_usec - before->ru_utime.tv_usec);
+
+    long system_sec = abs(after->ru_stime.tv_sec - before->ru_stime.tv_sec);
+    long system_micro = abs(after->ru_stime.tv_usec - before->ru_stime.tv_usec);
+
+    printf("user time: %ld.%06ld\n", user_sec, user_micro);
+    printf("system time: %ld.%06ld\n\n", system_sec, system_micro);
+}
+
 int main(int argc, char* argv[]) {
     if (argc != 6) {
         fprintf(stderr, "Usage: ./macierz path workers_count timeout");
@@ -248,11 +259,16 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    struct rusage before;
+    struct rusage after;
     for (int i = 0; i < workers_count; i++) {
         int status;
+        getrusage(RUSAGE_CHILDREN, &before);
         waitpid(workers[i], &status, 0);
+        getrusage(RUSAGE_CHILDREN, &after);
         printf("Proces %d wykonal %d mnozen macierzy\n", workers[i],
                WEXITSTATUS(status));
+        print_usage(&before, &after);
     }
     free(workers);
 
