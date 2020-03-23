@@ -154,7 +154,8 @@ int worker_callback(matrix* a, matrix* b, int pairs_number, clock_t start_time,
             continue;
         }
 
-        multiply_column(a, b, current_pair_index, col_index);
+        multiply_column(&a[current_pair_index], &b[current_pair_index],
+                        current_pair_index, col_index);
         multiplies_count++;
     }
 
