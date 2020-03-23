@@ -18,7 +18,7 @@ helper: helper.o
 
 .PHONY: clean
 clean:
-	rm -f $(obj) macierz
+	rm -f $(obj) macierz helper
 
 .PHONY: run
 run: macierz
