@@ -87,8 +87,10 @@ void free_matrix(matrix* m) {
     free(m->values);
 }
 
-int get_task(int tasks_count) {
-    FILE* tasks_file = fopen(".tmp/tasks", "r+");
+int get_task(int pair_index, int tasks_count) {
+    char buffer[PATH_MAX + 1];
+    sprintf(buffer, ".tmp/tasks%03d", pair_index);
+    FILE* tasks_file = fopen(buffer, "r+");
     int fd = fileno(tasks_file);
     flock(fd, LOCK_EX);
 
@@ -112,9 +114,10 @@ int get_task(int tasks_count) {
     return task_index;
 }
 
-void multiply_column(matrix* a, matrix* b, int col_index) {
-    char* filename = calloc(20, sizeof(char));
-    sprintf(filename, ".tmp/part%04d", col_index);
+void multiply_column(matrix* a, matrix* b, int current_pair_index,
+                     int col_index) {
+    char filename[PATH_MAX + 1];
+    sprintf(filename, ".tmp/part_%03d_%04d", current_pair_index, col_index);
     FILE* part_file = fopen(filename, "w+");
 
     for (int y = 0; y < a->rows; y++) {
@@ -129,23 +132,44 @@ void multiply_column(matrix* a, matrix* b, int col_index) {
     fclose(part_file);
 }
 
-int worker_callback(matrix* a, matrix* b, clock_t start_time, int timeout) {
+int worker_callback(matrix* a, matrix* b, int pairs_number, clock_t start_time,
+                    int timeout) {
     int multiplies_count = 0;
+    int current_pair_index = 0;
     while (1) {
         if (get_elapsed_time(start_time) >= timeout) {
             break;
         }
 
-        int col_index = get_task(b->cols);
-        if (col_index == -1) {
+        if (current_pair_index == pairs_number) {
             break;
         }
 
-        multiply_column(a, b, col_index);
+        int col_index =
+            get_task(current_pair_index, b[current_pair_index].cols);
+        if (col_index == -1) {
+            current_pair_index++;
+            continue;
+        }
+
+        multiply_column(a, b, current_pair_index, col_index);
         multiplies_count++;
     }
 
     return multiplies_count;
+}
+
+int number_of_lines(FILE* f) {
+    fseek(f, 0, SEEK_SET);
+
+    int retval = 0;
+    char buffer[MAX_LINE_LENGTH];
+    while (fgets(buffer, MAX_LINE_LENGTH, f) != NULL) {
+        retval++;
+    }
+
+    fseek(f, 0, SEEK_SET);
+    return retval;
 }
 
 int main(int argc, char* argv[]) {
@@ -155,42 +179,54 @@ int main(int argc, char* argv[]) {
     }
 
     FILE* input_file = fopen(argv[1], "r");
-    char input_line[PATH_MAX * 3 + 3];
-    fgets(input_line, PATH_MAX * 3 + 3, input_file);
-    fclose(input_file);
-
-    char a_filename[PATH_MAX + 1];
-    char b_filename[PATH_MAX + 1];
-    char c_filename[PATH_MAX + 1];
-
-    strcpy(a_filename, strtok(input_line, " "));
-    strcpy(b_filename, strtok(NULL, " "));
-    strcpy(c_filename, strtok(NULL, " "));
-
     int workers_count = atoi(argv[2]);
     int timeout = atoi(argv[3]);
 
-    matrix a = load_matrix(a_filename);
-    matrix b = load_matrix(b_filename);
+    int pairs_number = number_of_lines(input_file);
 
-    system("rm -rf .tmp");
-    system("mkdir -p .tmp");
+    matrix* a_matrices = calloc(pairs_number, sizeof(matrix));
+    matrix* b_matrices = calloc(pairs_number, sizeof(matrix));
+    char** c_filenames = calloc(pairs_number, sizeof(char*));
+    for (int i = 0; i < pairs_number; i++) {
+        c_filenames[i] = calloc(PATH_MAX + 1, sizeof(char*));
+    }
 
-    FILE* tasks_file = fopen(".tmp/tasks", "w+");
-    char* encoded_tasks = calloc(b.cols + 1, sizeof(char));
-    sprintf(encoded_tasks, "%0*d", b.cols, 0);
-    fwrite(encoded_tasks, 1, b.cols, tasks_file);
-    fflush(tasks_file);
-    free(encoded_tasks);
-    fclose(tasks_file);
+    char input_line[PATH_MAX * 3 + 3];
+    int i = 0;
+    while (fgets(input_line, PATH_MAX * 3 + 3, input_file) != NULL) {
+        char a_filename[PATH_MAX + 1];
+        char b_filename[PATH_MAX + 1];
 
+        strcpy(a_filename, strtok(input_line, " "));
+        strcpy(b_filename, strtok(NULL, " "));
+        strcpy(c_filenames[i], strtok(NULL, " "));
+
+        a_matrices[i] = load_matrix(a_filename);
+        b_matrices[i] = load_matrix(b_filename);
+
+        system("mkdir -p .tmp");
+
+        char tasks_filename_buffer[PATH_MAX + 1];
+        sprintf(tasks_filename_buffer, ".tmp/tasks%03d", i);
+        FILE* tasks_file = fopen(tasks_filename_buffer, "w+");
+        char* encoded_tasks = calloc(b_matrices[i].cols + 1, sizeof(char));
+        sprintf(encoded_tasks, "%0*d", b_matrices[i].cols, 0);
+        fwrite(encoded_tasks, 1, b_matrices[i].cols, tasks_file);
+        fflush(tasks_file);
+        free(encoded_tasks);
+        fclose(tasks_file);
+        i++;
+    }
+
+    fclose(input_file);
     time_t start_time = time(NULL);
 
     pid_t* workers = calloc(workers_count, sizeof(int));
     for (int i = 0; i < workers_count; i++) {
         pid_t spawned_worker = fork();
         if (spawned_worker == 0) {
-            return worker_callback(&a, &b, start_time, timeout);
+            return worker_callback(a_matrices, b_matrices, pairs_number,
+                                   start_time, timeout);
         } else {
             workers[i] = spawned_worker;
         }
@@ -203,13 +239,19 @@ int main(int argc, char* argv[]) {
                WEXITSTATUS(status));
     }
     free(workers);
-    free_matrix(&a);
-    free_matrix(&b);
-    fclose(tasks_file);
 
-    char buffer[256];
-    sprintf(buffer, "paste .tmp/part* > %s", c_filename);
-    system(buffer);
+    for (int i = 0; i < pairs_number; i++) {
+        char buffer[256];
+        sprintf(buffer, "paste .tmp/part_%03d_* > %s", i, c_filenames[i]);
+        system(buffer);
+
+        free_matrix(&a_matrices[i]);
+        free_matrix(&b_matrices[i]);
+        free(c_filenames[i]);
+    }
+    free(c_filenames);
+
+    system("rm -rf .tmp");
 
     return 0;
 }
