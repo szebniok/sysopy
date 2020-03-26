@@ -23,3 +23,7 @@ cw03/**/*.txt
 cw03/**/lista
 cw03/**/helper
 cw03/**/.tmp
+
+#cw04
+cw04/**/main
+cw04/**/*.o
