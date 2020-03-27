@@ -45,6 +45,12 @@ int main(int argc, char *argv[]) {
     int count = atoi(argv[2]);
     char *mode = argv[3];
 
+    sigset_t block_mask;
+    sigfillset(&block_mask);
+    sigdelset(&block_mask, SIGUSR1);
+    sigdelset(&block_mask, SIGUSR2);
+    sigprocmask(SIG_SETMASK, &block_mask, NULL);
+
     struct sigaction sigusr1_action;
     if (strcmp(mode, "KILL") == 0) {
         sigusr1_action.sa_sigaction = sigusr1;
@@ -52,18 +58,13 @@ int main(int argc, char *argv[]) {
         sigusr1_action.sa_sigaction = sigusr1_sigqueue;
     }
     sigusr1_action.sa_flags = SA_SIGINFO;
-    sigfillset(&sigusr1_action.sa_mask);
-    sigdelset(&sigusr1_action.sa_mask, SIGUSR1);
-    sigdelset(&sigusr1_action.sa_mask, SIGUSR2);
+    sigemptyset(&sigusr1_action.sa_mask);
+    sigaction(SIGUSR1, &sigusr1_action, NULL);
 
     struct sigaction sigusr2_action;
     sigusr2_action.sa_sigaction = sigusr2;
     sigusr2_action.sa_flags = SA_SIGINFO;
-    sigfillset(&sigusr2_action.sa_mask);
-    sigdelset(&sigusr2_action.sa_mask, SIGUSR1);
-    sigdelset(&sigusr2_action.sa_mask, SIGUSR2);
-
-    sigaction(SIGUSR1, &sigusr1_action, NULL);
+    sigemptyset(&sigusr2_action.sa_mask);
     sigaction(SIGUSR2, &sigusr2_action, NULL);
 
     for (int i = 0; i < count; i++) {
@@ -74,5 +75,5 @@ int main(int argc, char *argv[]) {
     while (!got_last_reply) {
     }
 
-    printf("%d Sent %d signals, got back %d\n", getpid(), count, replies_count);
+    printf("Sent %d signals, got back %d\n", count, replies_count);
 }
