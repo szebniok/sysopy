@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "common.h"
 
 int got_last_reply = 0;
 int replies_count = 0;
@@ -43,34 +44,30 @@ int main(int argc, char *argv[]) {
 
     int pid = atoi(argv[1]);
     int count = atoi(argv[2]);
-    char *mode = argv[3];
+    mode_t mode = get_mode(argv[3]);
 
     sigset_t block_mask;
     sigfillset(&block_mask);
-    sigdelset(&block_mask, SIGUSR1);
-    sigdelset(&block_mask, SIGUSR2);
+    sigdelset(&block_mask, SIG1(mode));
+    sigdelset(&block_mask, SIG2(mode));
     sigprocmask(SIG_SETMASK, &block_mask, NULL);
 
     struct sigaction sigusr1_action;
-    if (strcmp(mode, "KILL") == 0) {
-        sigusr1_action.sa_sigaction = sigusr1;
-    } else {
-        sigusr1_action.sa_sigaction = sigusr1_sigqueue;
-    }
+    sigusr1_action.sa_sigaction = mode == SIGQUEUE ? sigusr1_sigqueue : sigusr1;
     sigusr1_action.sa_flags = SA_SIGINFO;
     sigemptyset(&sigusr1_action.sa_mask);
-    sigaction(SIGUSR1, &sigusr1_action, NULL);
+    sigaction(SIG1(mode), &sigusr1_action, NULL);
 
     struct sigaction sigusr2_action;
     sigusr2_action.sa_sigaction = sigusr2;
     sigusr2_action.sa_flags = SA_SIGINFO;
     sigemptyset(&sigusr2_action.sa_mask);
-    sigaction(SIGUSR2, &sigusr2_action, NULL);
+    sigaction(SIG2(mode), &sigusr2_action, NULL);
 
     for (int i = 0; i < count; i++) {
-        kill(pid, SIGUSR1);
+        kill(pid, SIG1(mode));
     }
-    kill(pid, SIGUSR2);
+    kill(pid, SIG2(mode));
 
     while (!got_last_reply) {
     }
