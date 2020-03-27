@@ -27,3 +27,5 @@ cw03/**/.tmp
 #cw04
 cw04/**/main
 cw04/**/*.o
+cw04/**/catcher
+cw04/**/sender
