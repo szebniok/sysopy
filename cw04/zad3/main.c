@@ -79,6 +79,7 @@ int main() {
 
     kill(getpid(), SIGALRM);
 
-    while (1) {
+    struct timespec nanosleep_value = {2, 0};
+    while (nanosleep(&nanosleep_value, &nanosleep_value)) {
     }
 }
