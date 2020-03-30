@@ -65,12 +65,20 @@ int main(int argc, char *argv[]) {
     sigaction(SIG2(mode), &sigusr2_action, NULL);
 
     for (int i = 0; i < count; i++) {
-        kill(pid, SIG1(mode));
+        if (mode == SIGQUEUE) {
+            sigqueue(pid, SIG1(mode), (union sigval){.sival_int = 0});
+        } else {
+            kill(pid, SIG1(mode));
+        }
 
         while (replies_count - 1 < i) {
         }
     }
-    kill(pid, SIG2(mode));
+    if (mode == SIGQUEUE) {
+        sigqueue(pid, SIG2(mode), (union sigval){.sival_int = 0});
+    } else {
+        kill(pid, SIG2(mode));
+    }
 
     while (!got_last_reply) {
     }

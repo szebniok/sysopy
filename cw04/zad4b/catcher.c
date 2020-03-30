@@ -32,7 +32,11 @@ void sigusr2(int signum, siginfo_t *info, void *context) {
     (void)context;
 
     sender_pid = info->si_pid;
-    kill(sender_pid, SIG2(mode));
+    if (mode == SIGQUEUE) {
+        sigqueue(sender_pid, SIG2(mode), (union sigval){.sival_int = 0});
+    } else {
+        kill(sender_pid, SIG2(mode));
+    }
     got_sig2 = 1;
 }
 
@@ -68,6 +72,4 @@ int main(int argc, char *argv[]) {
     }
 
     printf("received %d signals\n", sigusr1_count);
-
-    kill(sender_pid, SIG2(mode));
 }

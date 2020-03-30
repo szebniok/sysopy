@@ -63,5 +63,9 @@ int main(int argc, char *argv[]) {
             kill(sender_pid, SIG1(mode));
         }
     }
-    kill(sender_pid, SIG2(mode));
+    if (mode == SIGQUEUE) {
+        sigqueue(sender_pid, SIG2(mode), (union sigval){.sival_int = 0});
+    } else {
+        kill(sender_pid, SIG2(mode));
+    }
 }
