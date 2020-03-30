@@ -5,7 +5,7 @@ src = $(wildcard *.c)
 obj = $(src:.c=.o)
 
 .PHONY: all
-all: run
+all: sender catcher
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -19,8 +19,3 @@ sender: sender.o
 .PHONY: clean
 clean:
 	rm -f $(obj) catcher sender
-
-.PHONY: run
-run: sender catcher
-	./catcher &
-	./sender $$! 100 KILL

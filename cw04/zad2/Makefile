@@ -5,7 +5,7 @@ src = $(wildcard *.c)
 obj = $(src:.c=.o)
 
 .PHONY: all
-all: run
+all: main child
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -13,10 +13,9 @@ all: run
 main: main.o
 	$(CC) $(CFLAGS) $^ -o $@
 
+child: child.o
+	$(CC) $(CFLAGS) $^ -o $@
+
 .PHONY: clean
 clean:
-	rm -f $(obj) main
-
-.PHONY: run
-run: main
-	./main
+	rm -f $(obj) main child
