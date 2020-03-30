@@ -34,8 +34,8 @@ void sigtimer(int signum, siginfo_t *info, void *context) {
 
     puts("Scenario 3: si_code");
     if (info->si_code == SI_TIMER) {
-        printf("Signal was sent by timer with id of %d\n\n",
-               info->si_value.sival_int);
+        int *timer_id = (int *)info->si_value.sival_ptr;
+        printf("Signal was sent by timer with id of %d\n\n", *timer_id);
     } else if (info->si_code == SI_USER) {
         puts("SIGALRM was triggered by user\n");
     }
