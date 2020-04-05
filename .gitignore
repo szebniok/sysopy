@@ -31,3 +31,8 @@ cw04/**/catcher
 cw04/**/sender
 cw04/**/raport2.txt
 cw04/**/child
+
+#cw05
+cw05/**/main
+cw05/**/*.o
+cw05/**/*.txt
