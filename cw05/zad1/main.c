@@ -14,6 +14,13 @@ typedef struct {
     char** args;
 } command;
 
+void free_command(command* cmd) {
+    for (char** arg = cmd->args; *arg != NULL; arg++) {
+        free(*arg);
+    }
+    free(cmd->args);
+}
+
 void strip_ending_whitespace(char* s) {
     int i = strlen(s) - 1;
     while (i >= 0 && isspace(s[i])) {
@@ -78,6 +85,9 @@ int main(int argc, char* argv[]) {
 
             prev_pipes[0] = pipes[0];
             prev_pipes[1] = pipes[1];
+
+            free_command(commands[i]);
+            free(commands[i]);
         }
 
         while (i-- > 0) {
@@ -91,4 +101,6 @@ int main(int argc, char* argv[]) {
         }
         puts("");
     }
+
+    fclose(input_file);
 }
