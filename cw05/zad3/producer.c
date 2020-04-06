@@ -9,8 +9,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    srand(time(NULL));
-
     FILE *pipe = fopen(argv[1], "w");
     FILE *file = fopen(argv[2], "r");
     const int N = atoi(argv[3]);
