@@ -15,7 +15,7 @@ main: main.o
 
 .PHONY: clean
 clean:
-	rm -f $(obj) main
+	rm -f $(obj) main test.txt
 
 .PHONY: run
 run: main test.txt
