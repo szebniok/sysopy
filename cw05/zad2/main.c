@@ -11,9 +11,9 @@ int main(int argc, char* argv[]) {
 
     char* cmd = calloc(strlen(argv[1]) + 10, sizeof(char));
     sprintf(cmd, "sort %s", argv[1]);
-    free(cmd);
 
     FILE* output = popen(cmd, "w");
+    free(cmd);
 
     char buffer[257];
     while (fgets(buffer, sizeof(buffer) - 1, output) != NULL) {
