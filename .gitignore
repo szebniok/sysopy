@@ -36,3 +36,5 @@ cw04/**/child
 cw05/**/main
 cw05/**/*.o
 cw05/**/*.txt
+cw05/**/consumer
+cw05/**/producer
