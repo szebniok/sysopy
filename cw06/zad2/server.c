@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <mqueue.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -107,34 +108,40 @@ void stop_handler(char* text) {
     free(client_to_be_deleted);
 }
 
-// void stop_server() {
-//     message stop_server;
-//     stop_server.type = STOP_SERVER;
-//     for (int i = 0; i < clients_count; i++) {
-//         msgsnd(clients[i]->queue_id, &stop_server, TEXT_LEN, 0);
-//     }
+void stop_server() {
+    char text[TEXT_LEN + 1] = {0};
+    for (int i = 0; i < clients_count; i++) {
+        send_message(clients[i]->queue_id, STOP_SERVER, text);
+    }
 
-//     while (clients_count > 0) {
-//         message stop_client;
-//         msgrcv(server_queue, &stop_client, TEXT_LEN, STOP, 0);
-//         stop_handler(&stop_client);
-//     }
+    while (clients_count > 0) {
+        char type;
+        char* reply = read_message(server_queue, &type);
+        puts(reply);
 
-//     puts("Deleting queue...");
-//     msgctl(server_queue, IPC_RMID, NULL);
-//     exit(0);
-// }
+        if (type == STOP) {
+            stop_handler(reply);
+        }
 
-// void sigint_handler(int signum) {
-//     (void)signum;
-//     puts("sigint");
-//     stop_server();
-// }
+        free(reply);
+    }
+
+    puts("Deleting queue...");
+    mq_close(server_queue);
+    mq_unlink("/server");
+    exit(0);
+}
+
+void sigint_handler(int signum) {
+    (void)signum;
+    puts("sigint");
+    stop_server();
+}
 
 int main() {
     server_queue = mq_open("/server", O_RDWR | O_CREAT, 0666, NULL);
 
-    // signal(SIGINT, sigint_handler);
+    signal(SIGINT, sigint_handler);
 
     while (1) {
         char type;
@@ -160,4 +167,6 @@ int main() {
         }
         free(text);
     }
+
+    stop_server();
 }

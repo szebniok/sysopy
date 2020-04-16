@@ -48,11 +48,9 @@ void notification_handler(union sigval sv) {
                 }
                 other_queue = -1;
                 break;
-                //         } else if (reply.type == STOP_SERVER) {
-                //             stop_client();
-                //         } else {
-                //             puts(reply.text);
-                //         }
+            case STOP_SERVER:
+                stop_client();
+                break;
             default:
                 puts(text);
         }
