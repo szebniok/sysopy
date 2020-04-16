@@ -18,5 +18,6 @@ typedef struct {
 #define INIT_ACK 2L
 #define LIST 3L
 #define CONNECT 4L
+#define SEND 5L
 
 #endif

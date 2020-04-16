@@ -7,10 +7,18 @@
 
 #include "common.h"
 
+int other_queue = -1;
+
 void get_replies(int client_queue) {
     message reply;
     while (msgrcv(client_queue, &reply, TEXT_LEN, 0, IPC_NOWAIT) != -1) {
-        puts(reply.text);
+        if (reply.type == CONNECT) {
+            other_queue = atoi(reply.text);
+        } else if (reply.type == SEND) {
+            printf("MESSAGE: %s", reply.text);
+        } else {
+            puts(reply.text);
+        }
     }
 }
 
@@ -42,6 +50,7 @@ int main() {
     char line[128];
     while (fgets(line, sizeof(line), stdin)) {
         message msg;
+        int is_msg_to_client = 0;
 
         if (strcmp(line, "LIST")) {
             msg.type = LIST;
@@ -56,7 +65,15 @@ int main() {
             sprintf(msg.text, "%d %d", own_id, second_id);
         }
 
-        msgsnd(server_queue, &msg, TEXT_LEN, 0);
+        if (starts_with(line, "SEND") && other_queue != -1) {
+            msg.type = SEND;
+
+            sprintf(msg.text, "%s", strchr(line, ' ') + 1);
+            is_msg_to_client = 1;
+        }
+
+        int destination = is_msg_to_client ? other_queue : server_queue;
+        msgsnd(destination, &msg, TEXT_LEN, 0);
 
         sleep(1);
 

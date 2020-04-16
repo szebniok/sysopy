@@ -54,19 +54,25 @@ void connect_handler(message* msg) {
     int client_id = atoi(strtok(msg->text, " "));
     int second_id = atoi(strtok(NULL, " "));
 
-    int client_index = -1, second_index = -1;
+    client *first, *second;
     for (int i = 0; i < clients_count; i++) {
         if (client_id == clients[i]->id) {
-            client_index = i;
+            first = clients[i];
         }
         if (second_id == clients[i]->id) {
-            second_index = i;
+            second = clients[i];
         }
     }
 
-    clients[client_index]->connected_client_id = second_index;
-    clients[second_index]->connected_client_id = client_index;
+    first->connected_client_id = second->id;
+    second->connected_client_id = first->id;
 
+    message reply;
+    reply.type = CONNECT;
+    sprintf(reply.text, "%d", first->queue_id);
+    msgsnd(second->queue_id, &reply, TEXT_LEN, 0);
+    sprintf(reply.text, "%d", second->queue_id);
+    msgsnd(first->queue_id, &reply, TEXT_LEN, 0);
 }
 
 int main() {
