@@ -36,13 +36,9 @@ void init_handler(message* msg) {
 }
 
 void list_handler(message* msg) {
-    puts("list_handler");
     int client_id = atoi(msg->text);
-    printf("client_id: %d\n", client_id);
 
     int queue_id = get_client_queue_id(client_id);
-
-    puts("sending reply...");
 
     message reply;
     reply.type = LIST;
@@ -52,6 +48,25 @@ void list_handler(message* msg) {
     }
     msgsnd(queue_id, &reply, TEXT_LEN, 0);
     puts(reply.text);
+}
+
+void connect_handler(message* msg) {
+    int client_id = atoi(strtok(msg->text, " "));
+    int second_id = atoi(strtok(NULL, " "));
+
+    int client_index = -1, second_index = -1;
+    for (int i = 0; i < clients_count; i++) {
+        if (client_id == clients[i]->id) {
+            client_index = i;
+        }
+        if (second_id == clients[i]->id) {
+            second_index = i;
+        }
+    }
+
+    clients[client_index]->connected_client_id = second_index;
+    clients[second_index]->connected_client_id = client_index;
+
 }
 
 int main() {
@@ -70,6 +85,8 @@ int main() {
             case LIST:
                 list_handler(&msg);
                 break;
+            case CONNECT:
+                connect_handler(&msg);
         }
     }
 
