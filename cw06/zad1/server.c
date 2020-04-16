@@ -34,7 +34,7 @@ void init_handler(message* msg) {
     clients[clients_count++] = new_client;
 
     message reply;
-    reply.type = INIT_ACK;
+    reply.type = INIT;
     sprintf(reply.text, "%d", new_client->id);
     msgsnd(queue_id, &reply, TEXT_LEN, 0);
 }

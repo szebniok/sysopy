@@ -66,7 +66,7 @@ int main() {
     msgsnd(server_queue, &init, TEXT_LEN, 0);
 
     message init_ack;
-    msgrcv(client_queue, &init_ack, TEXT_LEN, INIT_ACK, 0);
+    msgrcv(client_queue, &init_ack, TEXT_LEN, INIT, 0);
     own_id = atoi(init_ack.text);
 
     printf("own_id: %d\ncommand: ", own_id);

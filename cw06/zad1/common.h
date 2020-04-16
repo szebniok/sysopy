@@ -16,12 +16,11 @@ typedef struct {
 } client;
 
 #define INIT 1L
-#define INIT_ACK 2L
-#define LIST 3L
-#define CONNECT 4L
-#define SEND 5L
-#define DISCONNECT 6L
-#define STOP 7L
-#define STOP_SERVER 8L
+#define LIST 2L
+#define CONNECT 3L
+#define SEND 4L
+#define DISCONNECT 5L
+#define STOP 6L
+#define STOP_SERVER 7L
 
 #endif
