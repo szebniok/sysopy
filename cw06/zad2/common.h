@@ -10,7 +10,10 @@
 
 char* read_message(mqd_t src, char* type) {
     char from_queue[TEXT_LEN + 2] = {0};
-    mq_receive(src, from_queue, TEXT_LEN + 1, NULL);
+
+    int success = mq_receive(src, from_queue, TEXT_LEN + 1, NULL);
+    if (success == -1) return NULL;
+
     if (type) {
         *type = from_queue[0];
     }

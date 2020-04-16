@@ -12,13 +12,13 @@ int first_available_id = 0;
 int clients_count = 0;
 client* clients[MAX_CLIENTS] = {NULL};
 
-// client* get_client(int client_id) {
-//     for (int i = 0; i < clients_count; i++) {
-//         if (clients[i]->id == client_id) return clients[i];
-//     }
+client* get_client(int client_id) {
+    for (int i = 0; i < clients_count; i++) {
+        if (clients[i]->id == client_id) return clients[i];
+    }
 
-//     return NULL;
-// }
+    return NULL;
+}
 
 void init_handler(char* text) {
     mqd_t queue_id = mq_open(text, O_RDWR, 0666, NULL);
@@ -36,20 +36,19 @@ void init_handler(char* text) {
     send_message(new_client->queue_id, INIT, reply);
 }
 
-// void list_handler(message* msg) {
-//     int client_id = atoi(msg->text);
+void list_handler(char* text) {
+    int client_id = atoi(text);
 
-//     client* client = get_client(client_id);
+    client* client = get_client(client_id);
 
-//     message reply;
-//     reply.type = LIST;
-//     for (int i = 0; i < clients_count; i++) {
-//         sprintf(reply.text + strlen(reply.text), "%d: %d\n", clients[i]->id,
-//                 clients[i]->connected_client_id == -1);
-//     }
-//     msgsnd(client->queue_id, &reply, TEXT_LEN, 0);
-//     puts(reply.text);
-// }
+    char reply[TEXT_LEN + 1] = {0};
+    for (int i = 0; i < clients_count; i++) {
+        sprintf(reply + strlen(reply), "%d: %d\n", clients[i]->id,
+                clients[i]->connected_client_id == -1);
+    }
+
+    send_message(client->queue_id, LIST, reply);
+}
 
 // void connect_handler(message* msg) {
 //     int client_id = atoi(strtok(msg->text, " "));
@@ -130,11 +129,7 @@ void init_handler(char* text) {
 // }
 
 int main() {
-    // char* home_path = getpwuid(getuid())->pw_dir;
     server_queue = mq_open("/server", O_RDWR | O_CREAT, 0666, NULL);
-
-    // key_t server_queue_key = ftok(home_path, SERVER_KEY_ID);
-    // server_queue = msgget(server_queue_key, IPC_CREAT | 0666);
 
     // signal(SIGINT, sigint_handler);
 
@@ -147,9 +142,9 @@ int main() {
             case INIT:
                 init_handler(text);
                 break;
-                // case LIST:
-                //     list_handler(&msg);
-                //     break;
+            case LIST:
+                list_handler(text);
+                break;
                 // case CONNECT:
                 //     connect_handler(&msg);
                 //     break;
