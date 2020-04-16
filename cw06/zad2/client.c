@@ -37,11 +37,15 @@ void notification_handler(union sigval sv) {
     while ((text = read_message(client_queue, &type)) != NULL) {
         switch (type) {
             case CONNECT:
-                other_queue = atoi(text);
+                other_queue = mq_open(text, O_RDWR, 0666, NULL);
                 break;
-                //         } else if (reply.type == SEND) {
-                //             printf("MESSAGE: %s", reply.text);
+            case SEND:
+                printf("MESSAGE: %s", text);
+                break;
             case DISCONNECT:
+                if (other_queue) {
+                    mq_close(other_queue);
+                }
                 other_queue = -1;
                 break;
                 //         } else if (reply.type == STOP_SERVER) {
@@ -116,12 +120,12 @@ int main() {
             sprintf(text, "%d %d", own_id, second_id);
         }
 
-        //     if (starts_with(line, "SEND") && other_queue != -1) {
-        //         msg.type = SEND;
+        if (starts_with(line, "SEND") && other_queue != -1) {
+            type = SEND;
 
-        //         sprintf(msg.text, "%s", strchr(line, ' ') + 1);
-        //         is_msg_to_client = 1;
-        //     }
+            sprintf(text, "%s", strchr(line, ' ') + 1);
+            is_msg_to_client = 1;
+        }
 
         if (starts_with(line, "DISCONNECT")) {
             type = DISCONNECT;

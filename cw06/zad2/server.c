@@ -24,8 +24,11 @@ void init_handler(char* text) {
     mqd_t queue_id = mq_open(text, O_RDWR, 0666, NULL);
 
     client* new_client = calloc(1, sizeof(client));
+    new_client->queue_filename = calloc(FILENAME_LEN + 1, sizeof(client));
+
     new_client->id = first_available_id++;
     new_client->queue_id = queue_id;
+    sprintf(new_client->queue_filename, "%s", text);
     new_client->connected_client_id = -1;
 
     clients[clients_count++] = new_client;
@@ -61,9 +64,9 @@ void connect_handler(char* text) {
     second->connected_client_id = first->id;
 
     char reply[TEXT_LEN + 1] = {0};
-    sprintf(reply, "%d", first->queue_id);
+    sprintf(reply, "%s", first->queue_filename);
     send_message(second->queue_id, CONNECT, reply);
-    sprintf(reply, "%d", second->queue_id);
+    sprintf(reply, "%s", second->queue_filename);
     send_message(first->queue_id, CONNECT, reply);
 }
 

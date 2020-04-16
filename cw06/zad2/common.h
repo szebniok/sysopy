@@ -39,6 +39,7 @@ typedef struct {
 typedef struct {
     int id;
     int queue_id;
+    char* queue_filename;
     int connected_client_id;
 } client;
 
