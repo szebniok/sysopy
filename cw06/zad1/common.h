@@ -21,5 +21,6 @@ typedef struct {
 #define SEND 5L
 #define DISCONNECT 6L
 #define STOP 7L
+#define STOP_SERVER 8L
 
 #endif

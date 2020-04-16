@@ -1,3 +1,4 @@
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +8,7 @@
 #include "common.h"
 #define MAX_CLIENTS 10
 
+int server_queue;
 int first_available_id = 0;
 int clients_count = 0;
 client* clients[MAX_CLIENTS] = {NULL};
@@ -104,9 +106,35 @@ void stop_handler(message* msg) {
     free(client_to_be_deleted);
 }
 
+void stop_server() {
+    message stop_server;
+    stop_server.type = STOP_SERVER;
+    for (int i = 0; i < clients_count; i++) {
+        msgsnd(clients[i]->queue_id, &stop_server, TEXT_LEN, 0);
+    }
+
+    while (clients_count > 0) {
+        message stop_client;
+        msgrcv(server_queue, &stop_client, TEXT_LEN, STOP, 0);
+        stop_handler(&stop_client);
+    }
+
+    puts("Deleting queue...");
+    msgctl(server_queue, IPC_RMID, NULL);
+    exit(0);
+}
+
+void sigint_handler(int signum) {
+    (void)signum;
+    puts("sigint");
+    stop_server();
+}
+
 int main() {
     key_t server_queue_key = ftok("server.c", 1);
-    int server_queue = msgget(server_queue_key, IPC_CREAT | 0666);
+    server_queue = msgget(server_queue_key, IPC_CREAT | 0666);
+
+    signal(SIGINT, sigint_handler);
 
     while (1) {
         message msg;
@@ -131,6 +159,4 @@ int main() {
                 break;
         }
     }
-
-    msgctl(server_queue, IPC_RMID, NULL);
 }

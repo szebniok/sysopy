@@ -12,6 +12,18 @@ int client_queue;
 int server_queue;
 int other_queue = -1;
 
+void stop_client() {
+    message msg;
+    msg.type = STOP;
+    sprintf(msg.text, "%d", own_id);
+
+    msgsnd(server_queue, &msg, TEXT_LEN, 0);
+
+    puts("Deleting queue...");
+    msgctl(client_queue, IPC_RMID, NULL);
+    exit(0);
+}
+
 void get_replies(int client_queue) {
     message reply;
     while (msgrcv(client_queue, &reply, TEXT_LEN, 0, IPC_NOWAIT) != -1) {
@@ -21,21 +33,12 @@ void get_replies(int client_queue) {
             printf("MESSAGE: %s", reply.text);
         } else if (reply.type == DISCONNECT) {
             other_queue = -1;
+        } else if (reply.type == STOP_SERVER) {
+            stop_client();
         } else {
             puts(reply.text);
         }
     }
-}
-
-void stop_client() {
-    message msg;
-    msg.type = STOP;
-    sprintf(msg.text, "%d", own_id);
-    msgsnd(server_queue, &msg, TEXT_LEN, 0);
-
-    puts("Deleting queue...");
-    msgctl(client_queue, IPC_RMID, NULL);
-    exit(0);
 }
 
 int starts_with(char *s, char *prefix) {
