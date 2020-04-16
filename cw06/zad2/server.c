@@ -50,23 +50,22 @@ void list_handler(char* text) {
     send_message(client->queue_id, LIST, reply);
 }
 
-// void connect_handler(message* msg) {
-//     int client_id = atoi(strtok(msg->text, " "));
-//     int second_id = atoi(strtok(NULL, " "));
+void connect_handler(char* text) {
+    int client_id = atoi(strtok(text, " "));
+    int second_id = atoi(strtok(NULL, " "));
 
-//     client* first = get_client(client_id);
-//     client* second = get_client(second_id);
+    client* first = get_client(client_id);
+    client* second = get_client(second_id);
 
-//     first->connected_client_id = second->id;
-//     second->connected_client_id = first->id;
+    first->connected_client_id = second->id;
+    second->connected_client_id = first->id;
 
-//     message reply;
-//     reply.type = CONNECT;
-//     sprintf(reply.text, "%d", first->queue_id);
-//     msgsnd(second->queue_id, &reply, TEXT_LEN, 0);
-//     sprintf(reply.text, "%d", second->queue_id);
-//     msgsnd(first->queue_id, &reply, TEXT_LEN, 0);
-// }
+    char reply[TEXT_LEN + 1] = {0};
+    sprintf(reply, "%d", first->queue_id);
+    send_message(second->queue_id, CONNECT, reply);
+    sprintf(reply, "%d", second->queue_id);
+    send_message(first->queue_id, CONNECT, reply);
+}
 
 // void disconnect_handler(message* msg) {
 //     int client_id = atoi(msg->text);
@@ -145,9 +144,9 @@ int main() {
             case LIST:
                 list_handler(text);
                 break;
-                // case CONNECT:
-                //     connect_handler(&msg);
-                //     break;
+            case CONNECT:
+                connect_handler(text);
+                break;
                 // case DISCONNECT:
                 //     disconnect_handler(&msg);
                 //     break;

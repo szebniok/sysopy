@@ -35,18 +35,19 @@ void notification_handler(union sigval sv) {
     char *text;
     char type;
     while ((text = read_message(client_queue, &type)) != NULL) {
-        switch(type) {
-//         if (reply.type == CONNECT) {
-//             other_queue = atoi(reply.text);
-//         } else if (reply.type == SEND) {
-//             printf("MESSAGE: %s", reply.text);
-//         } else if (reply.type == DISCONNECT) {
-//             other_queue = -1;
-//         } else if (reply.type == STOP_SERVER) {
-//             stop_client();
-//         } else {
-//             puts(reply.text);
-//         }
+        switch (type) {
+            case CONNECT:
+                other_queue = atoi(text);
+                break;
+                //         } else if (reply.type == SEND) {
+                //             printf("MESSAGE: %s", reply.text);
+                //         } else if (reply.type == DISCONNECT) {
+                //             other_queue = -1;
+                //         } else if (reply.type == STOP_SERVER) {
+                //             stop_client();
+                //         } else {
+                //             puts(reply.text);
+                //         }
             default:
                 puts(text);
         }
@@ -70,14 +71,6 @@ void set_nonblocking() {
     attr.mq_flags = O_NONBLOCK;
     mq_setattr(client_queue, &attr, NULL);
 }
-
-// void get_replies(int client_queue) {
-//     char type;
-//     char text[TEXT_LEN + 1];
-
-//     while (mq_receive(client_queue, text, TEXT_LEN, 0, IPC_NOWAIT) != -1) {
-//     }
-// }
 
 int starts_with(char *s, char *prefix) {
     return strncmp(s, prefix, strlen(prefix)) == 0;
@@ -114,13 +107,13 @@ int main() {
             sprintf(text, "%d", own_id);
         }
 
-        //     if (starts_with(line, "CONNECT")) {
-        //         msg.type = CONNECT;
+        if (starts_with(line, "CONNECT")) {
+            type = CONNECT;
 
-        //         (void)strtok(line, " ");
-        //         int second_id = atoi(strtok(NULL, " "));
-        //         sprintf(msg.text, "%d %d", own_id, second_id);
-        //     }
+            (void)strtok(line, " ");
+            int second_id = atoi(strtok(NULL, " "));
+            sprintf(text, "%d %d", own_id, second_id);
+        }
 
         //     if (starts_with(line, "SEND") && other_queue != -1) {
         //         msg.type = SEND;
@@ -148,8 +141,7 @@ int main() {
 
         //     get_replies(client_queue);
 
-        //     printf("command: ");
-        // }
+        printf("command: ");
 
         // stop_client();
     }
