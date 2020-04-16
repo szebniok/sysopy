@@ -1,3 +1,4 @@
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,12 +46,16 @@ int starts_with(char *s, char *prefix) {
     return strncmp(s, prefix, strlen(prefix)) == 0;
 }
 
+void sigint_handler() { stop_client(); }
+
 int main() {
     key_t server_queue_key = ftok("server.c", 1);
     server_queue = msgget(server_queue_key, 0666);
 
     key_t client_queue_key = ftok("client.c", getpid());
     client_queue = msgget(client_queue_key, IPC_CREAT | 0666);
+
+    signal(SIGINT, sigint_handler);
 
     message init;
     init.type = INIT;
