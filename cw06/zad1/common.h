@@ -2,6 +2,7 @@
 #define COMMON_H
 
 #define TEXT_LEN 128
+#define SERVER_KEY_ID 1
 
 typedef struct {
     long type;

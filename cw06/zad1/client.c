@@ -1,3 +1,4 @@
+#include <pwd.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,10 +50,12 @@ int starts_with(char *s, char *prefix) {
 void sigint_handler() { stop_client(); }
 
 int main() {
-    key_t server_queue_key = ftok("server.c", 1);
+    char *home_path = getpwuid(getuid())->pw_dir;
+
+    key_t server_queue_key = ftok(home_path, SERVER_KEY_ID);
     server_queue = msgget(server_queue_key, 0666);
 
-    key_t client_queue_key = ftok("client.c", getpid());
+    key_t client_queue_key = ftok(home_path, getpid());
     client_queue = msgget(client_queue_key, IPC_CREAT | 0666);
 
     signal(SIGINT, sigint_handler);

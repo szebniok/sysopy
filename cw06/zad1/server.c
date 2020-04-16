@@ -1,9 +1,11 @@
+#include <pwd.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/msg.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "common.h"
 #define MAX_CLIENTS 10
@@ -131,7 +133,9 @@ void sigint_handler(int signum) {
 }
 
 int main() {
-    key_t server_queue_key = ftok("server.c", 1);
+    char* home_path = getpwuid(getuid())->pw_dir;
+
+    key_t server_queue_key = ftok(home_path, SERVER_KEY_ID);
     server_queue = msgget(server_queue_key, IPC_CREAT | 0666);
 
     signal(SIGINT, sigint_handler);
