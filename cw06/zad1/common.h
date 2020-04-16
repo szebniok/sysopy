@@ -19,5 +19,6 @@ typedef struct {
 #define LIST 3L
 #define CONNECT 4L
 #define SEND 5L
+#define DISCONNECT 6L
 
 #endif

@@ -11,12 +11,12 @@ int first_available_id = 0;
 int clients_count = 0;
 client* clients[MAX_CLIENTS] = {NULL};
 
-int get_client_queue_id(int client_id) {
+client* get_client(int client_id) {
     for (int i = 0; i < clients_count; i++) {
-        if (clients[i]->id == client_id) return clients[i]->queue_id;
+        if (clients[i]->id == client_id) return clients[i];
     }
 
-    return -1;
+    return NULL;
 }
 
 void init_handler(message* msg) {
@@ -38,7 +38,7 @@ void init_handler(message* msg) {
 void list_handler(message* msg) {
     int client_id = atoi(msg->text);
 
-    int queue_id = get_client_queue_id(client_id);
+    client* client = get_client(client_id);
 
     message reply;
     reply.type = LIST;
@@ -46,7 +46,7 @@ void list_handler(message* msg) {
         sprintf(reply.text + strlen(reply.text), "%d: %d\n", clients[i]->id,
                 clients[i]->connected_client_id == -1);
     }
-    msgsnd(queue_id, &reply, TEXT_LEN, 0);
+    msgsnd(client->queue_id, &reply, TEXT_LEN, 0);
     puts(reply.text);
 }
 
@@ -54,15 +54,8 @@ void connect_handler(message* msg) {
     int client_id = atoi(strtok(msg->text, " "));
     int second_id = atoi(strtok(NULL, " "));
 
-    client *first, *second;
-    for (int i = 0; i < clients_count; i++) {
-        if (client_id == clients[i]->id) {
-            first = clients[i];
-        }
-        if (second_id == clients[i]->id) {
-            second = clients[i];
-        }
-    }
+    client* first = get_client(client_id);
+    client* second = get_client(second_id);
 
     first->connected_client_id = second->id;
     second->connected_client_id = first->id;
@@ -73,6 +66,20 @@ void connect_handler(message* msg) {
     msgsnd(second->queue_id, &reply, TEXT_LEN, 0);
     sprintf(reply.text, "%d", second->queue_id);
     msgsnd(first->queue_id, &reply, TEXT_LEN, 0);
+}
+
+void disconnect_handler(message* msg) {
+    int client_id = atoi(strtok(msg->text, " "));
+
+    client* first = get_client(client_id);
+    client* second = get_client(first->connected_client_id);
+
+    first->connected_client_id = -1;
+    second->connected_client_id = -1;
+
+    message reply;
+    reply.type = DISCONNECT;
+    msgsnd(second->queue_id, &reply, TEXT_LEN, 0);
 }
 
 int main() {
@@ -93,6 +100,9 @@ int main() {
                 break;
             case CONNECT:
                 connect_handler(&msg);
+                break;
+            case DISCONNECT:
+                disconnect_handler(&msg);
         }
     }
 

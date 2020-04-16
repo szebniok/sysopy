@@ -16,6 +16,8 @@ void get_replies(int client_queue) {
             other_queue = atoi(reply.text);
         } else if (reply.type == SEND) {
             printf("MESSAGE: %s", reply.text);
+        } else if (reply.type == DISCONNECT) {
+            other_queue = -1;
         } else {
             puts(reply.text);
         }
@@ -44,15 +46,16 @@ int main() {
     msgrcv(client_queue, &init_ack, TEXT_LEN, INIT_ACK, 0);
     own_id = atoi(init_ack.text);
 
-    printf("own_id: %d\n", own_id);
-    (void)getchar();
+    printf("own_id: %d\ncommand: ", own_id);
 
     char line[128];
     while (fgets(line, sizeof(line), stdin)) {
+        puts(line);
         message msg;
+        msg.type = -1;
         int is_msg_to_client = 0;
 
-        if (strcmp(line, "LIST")) {
+        if (starts_with(line, "LIST")) {
             msg.type = LIST;
             sprintf(msg.text, "%d", own_id);
         }
@@ -72,11 +75,22 @@ int main() {
             is_msg_to_client = 1;
         }
 
-        int destination = is_msg_to_client ? other_queue : server_queue;
-        msgsnd(destination, &msg, TEXT_LEN, 0);
+        if (starts_with(line, "DISCONNECT")) {
+            msg.type = DISCONNECT;
+            sprintf(msg.text, "%d", own_id);
+            other_queue = -1;
+        }
 
-        sleep(1);
+        puts("getting replies...");
+        if (msg.type != -1) {
+            int destination = is_msg_to_client ? other_queue : server_queue;
+            msgsnd(destination, &msg, TEXT_LEN, 0);
+
+            sleep(1);
+        }
 
         get_replies(client_queue);
+
+        printf("command: ");
     }
 }
