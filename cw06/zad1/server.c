@@ -69,7 +69,7 @@ void connect_handler(message* msg) {
 }
 
 void disconnect_handler(message* msg) {
-    int client_id = atoi(strtok(msg->text, " "));
+    int client_id = atoi(msg->text);
 
     client* first = get_client(client_id);
     client* second = get_client(first->connected_client_id);
@@ -80,6 +80,28 @@ void disconnect_handler(message* msg) {
     message reply;
     reply.type = DISCONNECT;
     msgsnd(second->queue_id, &reply, TEXT_LEN, 0);
+}
+
+void stop_handler(message* msg) {
+    int client_id = atoi(msg->text);
+
+    int client_offset;
+    for (int i = 0; i < clients_count; i++) {
+        if (clients[i]->id == client_id) {
+            client_offset = i;
+            break;
+        }
+    }
+
+    client* client_to_be_deleted = clients[client_offset];
+
+    for (int i = client_offset; i < clients_count - 1; i++) {
+        clients[i] = clients[i + 1];
+    }
+    clients[clients_count - 1] = NULL;
+    clients_count--;
+
+    free(client_to_be_deleted);
 }
 
 int main() {
@@ -103,6 +125,10 @@ int main() {
                 break;
             case DISCONNECT:
                 disconnect_handler(&msg);
+                break;
+            case STOP:
+                stop_handler(&msg);
+                break;
         }
     }
 

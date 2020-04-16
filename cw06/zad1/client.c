@@ -7,6 +7,9 @@
 
 #include "common.h"
 
+int own_id;
+int client_queue;
+int server_queue;
 int other_queue = -1;
 
 void get_replies(int client_queue) {
@@ -24,18 +27,27 @@ void get_replies(int client_queue) {
     }
 }
 
+void stop_client() {
+    message msg;
+    msg.type = STOP;
+    sprintf(msg.text, "%d", own_id);
+    msgsnd(server_queue, &msg, TEXT_LEN, 0);
+
+    puts("Deleting queue...");
+    msgctl(client_queue, IPC_RMID, NULL);
+    exit(0);
+}
+
 int starts_with(char *s, char *prefix) {
     return strncmp(s, prefix, strlen(prefix)) == 0;
 }
 
 int main() {
     key_t server_queue_key = ftok("server.c", 1);
-    int server_queue = msgget(server_queue_key, 0666);
+    server_queue = msgget(server_queue_key, 0666);
 
     key_t client_queue_key = ftok("client.c", getpid());
-    int client_queue = msgget(client_queue_key, IPC_CREAT | 0666);
-
-    int own_id;
+    client_queue = msgget(client_queue_key, IPC_CREAT | 0666);
 
     message init;
     init.type = INIT;
@@ -81,7 +93,12 @@ int main() {
             other_queue = -1;
         }
 
+        if (starts_with(line, "STOP")) {
+            stop_client();
+        }
+
         puts("getting replies...");
+
         if (msg.type != -1) {
             int destination = is_msg_to_client ? other_queue : server_queue;
             msgsnd(destination, &msg, TEXT_LEN, 0);
@@ -93,4 +110,6 @@ int main() {
 
         printf("command: ");
     }
+
+    stop_client();
 }
