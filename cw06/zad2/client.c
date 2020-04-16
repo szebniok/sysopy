@@ -87,7 +87,7 @@ int main() {
 
     server_queue = mq_open("/server", O_RDWR, 0666, NULL);
 
-    // signal(SIGINT, sigint_handler);
+    signal(SIGINT, sigint_handler);
 
     send_message(server_queue, INIT, filename);
     char *encoded_id = read_message(client_queue, NULL);
@@ -141,10 +141,7 @@ int main() {
             sleep(1);
         }
 
-        //     get_replies(client_queue);
-
         printf("command: ");
-
-        // stop_client();
     }
+    stop_client();
 }
