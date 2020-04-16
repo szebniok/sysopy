@@ -41,8 +41,9 @@ void notification_handler(union sigval sv) {
                 break;
                 //         } else if (reply.type == SEND) {
                 //             printf("MESSAGE: %s", reply.text);
-                //         } else if (reply.type == DISCONNECT) {
-                //             other_queue = -1;
+            case DISCONNECT:
+                other_queue = -1;
+                break;
                 //         } else if (reply.type == STOP_SERVER) {
                 //             stop_client();
                 //         } else {
@@ -122,11 +123,11 @@ int main() {
         //         is_msg_to_client = 1;
         //     }
 
-        //     if (starts_with(line, "DISCONNECT")) {
-        //         msg.type = DISCONNECT;
-        //         sprintf(msg.text, "%d", own_id);
-        //         other_queue = -1;
-        //     }
+        if (starts_with(line, "DISCONNECT")) {
+            type = DISCONNECT;
+            sprintf(text, "%d", own_id);
+            other_queue = -1;
+        }
 
         //     if (starts_with(line, "STOP")) {
         //         stop_client();

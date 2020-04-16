@@ -67,19 +67,18 @@ void connect_handler(char* text) {
     send_message(first->queue_id, CONNECT, reply);
 }
 
-// void disconnect_handler(message* msg) {
-//     int client_id = atoi(msg->text);
+void disconnect_handler(char* text) {
+    int client_id = atoi(text);
 
-//     client* first = get_client(client_id);
-//     client* second = get_client(first->connected_client_id);
+    client* first = get_client(client_id);
+    client* second = get_client(first->connected_client_id);
 
-//     first->connected_client_id = -1;
-//     second->connected_client_id = -1;
+    first->connected_client_id = -1;
+    second->connected_client_id = -1;
 
-//     message reply;
-//     reply.type = DISCONNECT;
-//     msgsnd(second->queue_id, &reply, TEXT_LEN, 0);
-// }
+    char reply[TEXT_LEN + 1] = {0};
+    send_message(second->queue_id, DISCONNECT, reply);
+}
 
 // void stop_handler(message* msg) {
 //     int client_id = atoi(msg->text);
@@ -147,9 +146,9 @@ int main() {
             case CONNECT:
                 connect_handler(text);
                 break;
-                // case DISCONNECT:
-                //     disconnect_handler(&msg);
-                //     break;
+            case DISCONNECT:
+                disconnect_handler(text);
+                break;
                 // case STOP:
                 //     stop_handler(&msg);
                 //     break;
