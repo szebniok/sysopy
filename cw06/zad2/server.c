@@ -83,27 +83,29 @@ void disconnect_handler(char* text) {
     send_message(second->queue_id, DISCONNECT, reply);
 }
 
-// void stop_handler(message* msg) {
-//     int client_id = atoi(msg->text);
+void stop_handler(char* text) {
+    int client_id = atoi(text);
 
-//     int client_offset;
-//     for (int i = 0; i < clients_count; i++) {
-//         if (clients[i]->id == client_id) {
-//             client_offset = i;
-//             break;
-//         }
-//     }
+    int client_offset;
+    for (int i = 0; i < clients_count; i++) {
+        if (clients[i]->id == client_id) {
+            client_offset = i;
+            break;
+        }
+    }
 
-//     client* client_to_be_deleted = clients[client_offset];
+    client* client_to_be_deleted = clients[client_offset];
 
-//     for (int i = client_offset; i < clients_count - 1; i++) {
-//         clients[i] = clients[i + 1];
-//     }
-//     clients[clients_count - 1] = NULL;
-//     clients_count--;
+    for (int i = client_offset; i < clients_count - 1; i++) {
+        clients[i] = clients[i + 1];
+    }
+    clients[clients_count - 1] = NULL;
+    clients_count--;
 
-//     free(client_to_be_deleted);
-// }
+    mq_close(client_to_be_deleted->queue_id);
+    free(client_to_be_deleted->queue_filename);
+    free(client_to_be_deleted);
+}
 
 // void stop_server() {
 //     message stop_server;
@@ -152,9 +154,9 @@ int main() {
             case DISCONNECT:
                 disconnect_handler(text);
                 break;
-                // case STOP:
-                //     stop_handler(&msg);
-                //     break;
+            case STOP:
+                stop_handler(text);
+                break;
         }
         free(text);
     }

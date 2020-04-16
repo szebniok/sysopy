@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 #define TEXT_LEN 8192
-#define FILENAME_LEN 10
+#define FILENAME_LEN 16
 #define SERVER_KEY_ID 1
 
 char* read_message(mqd_t src, char* type) {

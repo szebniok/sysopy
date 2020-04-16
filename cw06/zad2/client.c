@@ -12,17 +12,17 @@ int own_id;
 mqd_t client_queue;
 mqd_t server_queue;
 mqd_t other_queue = -1;
+char filename[FILENAME_LEN + 1];
 
 void stop_client() {
-    // message msg;
-    // msg.type = STOP;
-    // sprintf(msg.text, "%d", own_id);
+    char msg[TEXT_LEN + 1] = {0};
+    sprintf(msg, "%d", own_id);
 
-    // msgsnd(server_queue, &msg, TEXT_LEN, 0);
+    send_message(server_queue, STOP, msg);
 
-    // puts("Deleting queue...");
-    // msgctl(client_queue, IPC_RMID, NULL);
-    // exit(0);
+    puts("Deleting queue...");
+    mq_unlink(filename);
+    exit(0);
 }
 
 void register_notification();
@@ -84,7 +84,6 @@ int starts_with(char *s, char *prefix) {
 void sigint_handler() { stop_client(); }
 
 int main() {
-    char filename[16];
     sprintf(filename, "/%d", getpid());
     client_queue = mq_open(filename, O_RDWR | O_CREAT, 0666, NULL);
 
@@ -133,9 +132,9 @@ int main() {
             other_queue = -1;
         }
 
-        //     if (starts_with(line, "STOP")) {
-        //         stop_client();
-        //     }
+        if (starts_with(line, "STOP")) {
+            stop_client();
+        }
 
         if (type != -1) {
             mqd_t destination = is_msg_to_client ? other_queue : server_queue;
