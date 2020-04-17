@@ -28,7 +28,8 @@ void stop_client() {
 
 void get_replies(int client_queue) {
     message reply;
-    while (msgrcv(client_queue, &reply, TEXT_LEN, 0, IPC_NOWAIT) != -1) {
+    while (msgrcv(client_queue, &reply, TEXT_LEN, -TYPES_COUNT, IPC_NOWAIT) !=
+           -1) {
         if (reply.type == CONNECT) {
             other_queue = atoi(reply.text);
         } else if (reply.type == SEND) {

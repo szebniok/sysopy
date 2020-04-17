@@ -142,7 +142,7 @@ int main() {
 
     while (1) {
         message msg;
-        msgrcv(server_queue, &msg, TEXT_LEN, 0, 0);
+        msgrcv(server_queue, &msg, TEXT_LEN, -TYPES_COUNT, 0);
         printf("%ld: %s\n", msg.type, msg.text);
 
         switch (msg.type) {

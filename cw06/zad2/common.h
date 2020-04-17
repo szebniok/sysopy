@@ -6,7 +6,15 @@
 
 #define TEXT_LEN 8192
 #define FILENAME_LEN 16
-#define SERVER_KEY_ID 1
+
+#define STOP_SERVER 1L
+#define STOP 2L
+#define DISCONNECT 3L
+#define LIST 4L
+#define INIT 5L
+#define CONNECT 6L
+#define SEND 7L
+#define TYPES_COUNT 7L
 
 char* read_message(mqd_t src, char* type) {
     char from_queue[TEXT_LEN + 2] = {0};
@@ -28,7 +36,7 @@ void send_message(mqd_t dest, char type, char* message) {
     char* buffer = calloc(2 + length, sizeof(char));
     buffer[0] = type;
     sprintf(buffer + 1, "%s", message);
-    mq_send(dest, buffer, length + 1, 1);
+    mq_send(dest, buffer, length + 1, TYPES_COUNT - type + 1);
 }
 
 typedef struct {
@@ -42,13 +50,5 @@ typedef struct {
     char* queue_filename;
     int connected_client_id;
 } client;
-
-#define INIT 1L
-#define LIST 2L
-#define CONNECT 3L
-#define SEND 4L
-#define DISCONNECT 5L
-#define STOP 6L
-#define STOP_SERVER 7L
 
 #endif

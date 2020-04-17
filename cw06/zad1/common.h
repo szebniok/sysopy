@@ -15,12 +15,13 @@ typedef struct {
     int connected_client_id;
 } client;
 
-#define INIT 1L
-#define LIST 2L
-#define CONNECT 3L
-#define SEND 4L
-#define DISCONNECT 5L
-#define STOP 6L
-#define STOP_SERVER 7L
+#define STOP_SERVER 1L
+#define STOP 2L
+#define DISCONNECT 3L
+#define LIST 4L
+#define INIT 5L
+#define CONNECT 6L
+#define SEND 7L
+#define TYPES_COUNT 7L
 
 #endif
