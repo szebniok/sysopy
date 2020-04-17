@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 199309L
 #include <pwd.h>
 #include <signal.h>
 #include <stdio.h>
@@ -5,6 +6,7 @@
 #include <string.h>
 #include <sys/msg.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "common.h"
@@ -26,7 +28,8 @@ void stop_client() {
     exit(0);
 }
 
-void get_replies(int client_queue) {
+void get_replies(union sigval sv) {
+    (void)sv;
     message reply;
     while (msgrcv(client_queue, &reply, TEXT_LEN, -TYPES_COUNT, IPC_NOWAIT) !=
            -1) {
@@ -50,6 +53,19 @@ int starts_with(char *s, char *prefix) {
 
 void sigint_handler() { stop_client(); }
 
+void set_timer() {
+    timer_t timer;
+    struct sigevent event;
+    event.sigev_notify = SIGEV_THREAD;
+    event.sigev_notify_function = get_replies;
+    event.sigev_notify_attributes = NULL;
+    event.sigev_value.sival_ptr = NULL;
+    timer_create(CLOCK_REALTIME, &event, &timer);
+    struct timespec ten_ms = {0, 10000000};
+    struct itimerspec timer_value = {ten_ms, ten_ms};
+    timer_settime(timer, 0, &timer_value, NULL);
+}
+
 int main() {
     char *home_path = getpwuid(getuid())->pw_dir;
 
@@ -70,11 +86,12 @@ int main() {
     msgrcv(client_queue, &init_ack, TEXT_LEN, INIT, 0);
     own_id = atoi(init_ack.text);
 
-    printf("own_id: %d\ncommand: ", own_id);
+    printf("own_id: %d\n", own_id);
+
+    set_timer();
 
     char line[128];
     while (fgets(line, sizeof(line), stdin)) {
-        puts(line);
         message msg;
         msg.type = -1;
         int is_msg_to_client = 0;
@@ -109,18 +126,10 @@ int main() {
             stop_client();
         }
 
-        puts("getting replies...");
-
         if (msg.type != -1) {
             int destination = is_msg_to_client ? other_queue : server_queue;
             msgsnd(destination, &msg, TEXT_LEN, 0);
-
-            sleep(1);
         }
-
-        get_replies(client_queue);
-
-        printf("command: ");
     }
 
     stop_client();
