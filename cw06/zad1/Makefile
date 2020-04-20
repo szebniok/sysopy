@@ -5,7 +5,7 @@ src = $(wildcard *.c)
 obj = $(src:.c=.o)
 
 .PHONY: all
-all: run
+all: server client
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -19,7 +19,3 @@ client: client.o
 .PHONY: clean
 clean:
 	rm -f $(obj) client server
-
-.PHONY: run
-run: server
-	./server
