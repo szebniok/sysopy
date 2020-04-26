@@ -1,26 +1,42 @@
 #include <fcntl.h>
 #include <semaphore.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/ipc.h>
-#include <sys/sem.h>
-#include <sys/shm.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
 #include "common.h"
 
+sem_t* space;
+sem_t* created;
+sem_t* packed;
+sem_t* can_modify;
+
+void sigterm_handler() {
+    puts("sigterm");
+    sem_close(space);
+    sem_close(created);
+    sem_close(packed);
+    sem_close(can_modify);
+
+    shm_unlink("/memory");
+
+    exit(0);
+}
+
 int main() {
     srand(getpid());
-    key_t key = ftok("main", 1);
+    signal(SIGTERM, sigterm_handler);
 
-    sem_t* space = sem_open("/space", O_RDWR, 0666);
-    sem_t* created = sem_open("/created", O_RDWR, 0666);
-    sem_t* packed = sem_open("/packed", O_RDWR, 0666);
-    sem_t* can_modify = sem_open("/can_modify", O_RDWR, 0666);
+    space = sem_open("/space", O_RDWR, 0666);
+    created = sem_open("/created", O_RDWR, 0666);
+    packed = sem_open("/packed", O_RDWR, 0666);
+    can_modify = sem_open("/can_modify", O_RDWR, 0666);
 
-    int memory = shmget(key, sizeof(memory_t), 0);
+    int memory = shm_open("/memory", O_RDWR, 0666);
 
     while (1) {
         sem_wait(space);
@@ -28,7 +44,8 @@ int main() {
 
         int n = rand() % MAX_CREATED_COUNT + 1;
 
-        memory_t* m = shmat(memory, NULL, 0);
+        memory_t* m =
+            mmap(NULL, sizeof(memory_t), PROT_WRITE, MAP_SHARED, memory, 0);
 
         int index;
         if (m->index == -1) {
@@ -53,7 +70,7 @@ int main() {
         sem_post(created);
         sem_post(can_modify);
 
-        shmdt(m);
+        munmap(m, sizeof(memory_t));
 
         sleep(1);
     }

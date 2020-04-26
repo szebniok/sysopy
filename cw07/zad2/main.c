@@ -1,20 +1,16 @@
-#define _POSIX_C_SOURCE 1
+#define _POSIX_C_SOURCE 200809L
 #include <fcntl.h>
 #include <semaphore.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/ipc.h>
-#include <sys/sem.h>
-#include <sys/shm.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include "common.h"
-
-int memory = -1;
 
 pid_t childs[CREATORS_COUNT + PACKERS_COUNT + SENDERS_COUNT];
 
@@ -25,23 +21,27 @@ void sigint_handler() {
 }
 
 int main() {
-    signal(SIGTERM, sigint_handler);
-    key_t key = ftok("main", 1);
+    signal(SIGINT, sigint_handler);
 
     sem_t *space = sem_open("/space", O_CREAT | O_RDWR, 0666, PACKAGES_COUNT);
     sem_t *created = sem_open("/created", O_CREAT | O_RDWR, 0666, 0);
     sem_t *packed = sem_open("/packed", O_CREAT | O_RDWR, 0666, 0);
     sem_t *can_modify = sem_open("/can_modify", O_CREAT | O_RDWR, 0666, 1);
 
-    memory = shmget(key, sizeof(memory_t), IPC_CREAT | 0666);
-    memory_t *m = shmat(memory, NULL, 0);
+    int memory = shm_open("/memory", O_CREAT | O_RDWR, 0666);
+    ftruncate(memory, sizeof(memory_t));
+
+    memory_t *m =
+        mmap(NULL, sizeof(memory_t), PROT_WRITE, MAP_SHARED, memory, 0);
     m->index = -1;
     m->size = 0;
     for (int i = 0; i < PACKAGES_COUNT; i++) {
         m->packages[i].status = SENT;
         m->packages[i].value = 0;
     }
-    shmdt(m);
+
+    munmap(m, sizeof(memory_t));
+
     int j = 0;
     for (int i = 0; i < CREATORS_COUNT; i++) {
         childs[j] = fork();
@@ -85,9 +85,7 @@ int main() {
     sem_unlink("/packed");
     sem_unlink("/can_modify");
 
-    if (memory != -1) {
-        shmctl(memory, IPC_RMID, NULL);
-    }
+    shm_unlink("/memory");
 
     return 0;
 }
