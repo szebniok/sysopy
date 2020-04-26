@@ -16,12 +16,13 @@ int main() {
 
     struct sembuf lock_memory = {CAN_MODIFY_INDEX, -1, 0};
     struct sembuf decrement_packed = {PACKED_INDEX, -1, 0};
+    struct sembuf ops_start[2] = {lock_memory, decrement_packed};
 
     struct sembuf unlock_memory = {CAN_MODIFY_INDEX, 1, 0};
     struct sembuf increment_space = {SPACE_INDEX, 1, 0};
+    struct sembuf ops_end[2] = {unlock_memory, increment_space};
 
     while (1) {
-        struct sembuf ops_start[2] = {lock_memory, decrement_packed};
         semop(semaphores, ops_start, 2);
 
         memory_t *m = shmat(memory, NULL, 0);
@@ -41,7 +42,6 @@ int main() {
         printf("Liczba paczek do przygotowania: %d. ", created_count);
         printf("Liczba paczek do wyslania: %d\n", packed_count);
 
-        struct sembuf ops_end[2] = {unlock_memory, increment_space};
         semop(semaphores, ops_end, 2);
 
         shmdt(m);

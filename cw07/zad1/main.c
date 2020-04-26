@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 1
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,36 +11,19 @@
 
 #include "common.h"
 
-#define CREATORS_COUNT 10
-#define PACKERS_COUNT 5
-#define SENDERS_COUNT 10
-
 int semaphores = -1;
 int memory = -1;
 
 pid_t childs[CREATORS_COUNT + PACKERS_COUNT + SENDERS_COUNT];
 
-void cleanup() {
-    puts("cleanup");
+void sigint_handler() {
     for (int i = 0; i < CREATORS_COUNT + PACKERS_COUNT + SENDERS_COUNT; i++) {
-        kill(childs[i], SIGKILL);
+        kill(childs[i], SIGTERM);
     }
-    puts("killed");
-    if (semaphores != -1) {
-        semctl(semaphores, 0, IPC_RMID);
-    }
-    if (memory != -1) {
-        shmctl(memory, IPC_RMID, NULL);
-    }
-    puts("deleted");
 }
 
-void sigint_handler() { exit(0); }
-
 int main() {
-    atexit(cleanup);
-
-    signal(SIGINT, sigint_handler);
+    signal(SIGTERM, sigint_handler);
     key_t key = ftok("main", 1);
 
     semaphores = semget(key, 4, IPC_CREAT | 0666);
@@ -57,38 +41,45 @@ int main() {
         m->packages[i].value = 0;
     }
     shmdt(m);
-
+    int j = 0;
     for (int i = 0; i < CREATORS_COUNT; i++) {
-        if (fork() == 0) {
+        childs[j] = fork();
+        if (childs[j] == 0) {
             execlp("./creator", "./creator", NULL);
             return 1;
         }
+        j++;
     }
 
     for (int i = 0; i < PACKERS_COUNT; i++) {
-        if (fork() == 0) {
+        childs[j] = fork();
+        if (childs[j] == 0) {
             execlp("./packer", "./packer", NULL);
             perror("test");
             return 1;
         }
+        j++;
     }
 
     for (int i = 0; i < SENDERS_COUNT; i++) {
-        if (fork() == 0) {
+        childs[j] = fork();
+        if (childs[j] == 0) {
             execlp("./sender", "./sender", NULL);
             return 1;
         }
+        j++;
     }
 
-    puts("pausing");
-    pause();
-
-    puts("waiting");
-    pause();
     for (int i = 0; i < CREATORS_COUNT + PACKERS_COUNT + SENDERS_COUNT; i++) {
         wait(0);
     }
 
-    puts("returning");
+    if (semaphores != -1) {
+        semctl(semaphores, 0, IPC_RMID);
+    }
+    if (memory != -1) {
+        shmctl(memory, IPC_RMID, NULL);
+    }
+
     return 0;
 }

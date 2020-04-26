@@ -4,6 +4,10 @@
 #define PACKAGES_COUNT 10
 #define MAX_CREATED_COUNT 10
 
+#define CREATORS_COUNT 7
+#define PACKERS_COUNT 5
+#define SENDERS_COUNT 3
+
 typedef enum { CREATED, PACKED, SENT } package_status;
 typedef struct {
     package_status status;
@@ -20,22 +24,5 @@ typedef struct {
     int size;
     package_t packages[PACKAGES_COUNT];
 } memory_t;
-
-void print_memory(memory_t* mem) {
-    for (int i = 0; i < PACKAGES_COUNT; i++) {
-        printf("|");
-        if (mem->index == i) {
-            printf("A");
-        } else if ((mem->index + mem->size - 1) % PACKAGES_COUNT == i) {
-            printf("B");
-        } else {
-            printf(" ");
-        }
-
-        printf("%d %d", mem->packages[i].status, mem->packages[i].value);
-        printf("| ");
-    }
-    printf("\n");
-}
 
 #endif

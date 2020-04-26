@@ -17,12 +17,13 @@ int main() {
 
     struct sembuf lock_memory = {CAN_MODIFY_INDEX, -1, 0};
     struct sembuf decrement_space = {SPACE_INDEX, -1, 0};
+    struct sembuf ops_start[2] = {lock_memory, decrement_space};
 
     struct sembuf unlock_memory = {CAN_MODIFY_INDEX, 1, 0};
     struct sembuf increment_created = {CREATED_INDEX, 1, 0};
+    struct sembuf ops_end[2] = {unlock_memory, increment_created};
 
     while (1) {
-        struct sembuf ops_start[2] = {lock_memory, decrement_space};
         semop(semaphores, ops_start, 2);
 
         int n = rand() % MAX_CREATED_COUNT + 1;
@@ -48,7 +49,6 @@ int main() {
         printf("Liczba paczek do przygotowania: %d. ", created_count + 1);
         printf("Liczba paczek do wyslania: %d\n", packed_count);
 
-        struct sembuf ops_end[2] = {unlock_memory, increment_created};
         semop(semaphores, ops_end, 2);
         shmdt(m);
 
