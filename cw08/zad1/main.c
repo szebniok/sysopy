@@ -113,6 +113,20 @@ int sign_worker(int *thread_index) {
     return calculate_time(&start);
 }
 
+int block_worker(int *thread_index) {
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    int k = *thread_index;
+    int chunk_size = width / threads_count;
+    for (int x = k * chunk_size; x < (k + 1) * chunk_size; x++) {
+        for (int y = 0; y < height; y++) {
+            histogram_pieces[k][image[y][x]]++;
+        }
+    }
+
+    return calculate_time(&start);
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 5) {
         fprintf(stderr,
@@ -142,6 +156,9 @@ int main(int argc, char *argv[]) {
         int (*start)(int *);
         if (strcmp(encoded_mode, "sign") == 0) {
             start = sign_worker;
+        }
+        if (strcmp(encoded_mode, "block") == 0) {
+            start = block_worker;
         }
 
         args[i] = i;
