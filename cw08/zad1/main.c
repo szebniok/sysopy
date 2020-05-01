@@ -1,3 +1,4 @@
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,7 +8,17 @@
 int height;
 int width;
 unsigned char **image;
-int histogram[256] = {0};
+
+int threads_count;
+int **histogram_pieces;
+
+int calculate_time(struct timespec *start) {
+    struct timespec end;
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    int retval = (end.tv_sec - start->tv_sec) * 1000000;
+    retval += (end.tv_nsec - start->tv_nsec) / 1000.0;
+    return retval;
+}
 
 void read_uncommented_line(char *buffer, FILE *input) {
     do {
@@ -56,6 +67,13 @@ void load_image(char *image_filename) {
 void save_histogram(char *histogram_filename) {
     FILE *output = fopen(histogram_filename, "w+");
 
+    int histogram[256] = {0};
+    for (int i = 0; i < threads_count; i++) {
+        for (int x = 0; x < 256; x++) {
+            histogram[x] += histogram_pieces[i][x];
+        }
+    }
+
     float max_occurence = histogram[0];
     for (int i = 1; i < 256; i++) {
         if (max_occurence < histogram[i]) {
@@ -80,6 +98,21 @@ void save_histogram(char *histogram_filename) {
     fclose(output);
 }
 
+int sign_worker(int *thread_index) {
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    int chunk_size = 256 / threads_count;
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            if (image[y][x] / chunk_size == *thread_index) {
+                histogram_pieces[0][image[y][x]]++;
+            }
+        }
+    }
+    return calculate_time(&start);
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 5) {
         fprintf(stderr,
@@ -87,28 +120,53 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    int threads_count = atoi(argv[1]);
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
+    threads_count = atoi(argv[1]);
     char *encoded_mode = argv[2];
     char *input_filename = argv[3];
     char *output_filename = argv[4];
 
-    (void)threads_count;
-
     load_image(input_filename);
 
-    if (strcmp(encoded_mode, "sign") == 0) {
+    histogram_pieces = calloc(threads_count, sizeof(int *));
+    for (int i = 0; i < threads_count; i++) {
+        histogram_pieces[i] = calloc(256, sizeof(int));
     }
 
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            histogram[image[y][x]]++;
+    pthread_t *threads = calloc(threads_count, sizeof(pthread_t));
+    int *args = calloc(threads_count, sizeof(int));
+
+    for (int i = 0; i < threads_count; i++) {
+        int (*start)(int *);
+        if (strcmp(encoded_mode, "sign") == 0) {
+            start = sign_worker;
         }
+
+        args[i] = i;
+        pthread_create(&threads[i], NULL, (void *(*)(void *))start, args + i);
+    }
+
+    for (int i = 0; i < threads_count; i++) {
+        int time;
+        pthread_join(threads[i], (void *)&time);
+        printf("thread %d took %d microseconds\n", i, time);
     }
 
     save_histogram(output_filename);
 
+    free(threads);
+    free(args);
+
+    for (int i = 0; i < threads_count; i++) {
+        free(histogram_pieces[i]);
+    }
+    free(histogram_pieces);
     for (int y = 0; y < height; y++) {
         free(image[y]);
     }
     free(image);
+
+    printf("total time: %d microseconds\n", calculate_time(&start));
 }
