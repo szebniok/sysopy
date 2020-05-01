@@ -38,3 +38,8 @@ cw05/**/*.o
 cw05/**/*.txt
 cw05/**/consumer
 cw05/**/producer
+
+#cw08
+cw08/**/main
+cw08/**/*.o
+cw08/**/*.pgm
