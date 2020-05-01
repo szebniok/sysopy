@@ -127,6 +127,19 @@ int block_worker(int *thread_index) {
     return calculate_time(&start);
 }
 
+int interleaved_worker(int *thread_index) {
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    int k = *thread_index;
+    for (int x = k; x < width; x += threads_count) {
+        for (int y = 0; y < height; y++) {
+            histogram_pieces[k][image[y][x]]++;
+        }
+    }
+
+    return calculate_time(&start);
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 5) {
         fprintf(stderr,
@@ -159,6 +172,9 @@ int main(int argc, char *argv[]) {
         }
         if (strcmp(encoded_mode, "block") == 0) {
             start = block_worker;
+        }
+        if (strcmp(encoded_mode, "interleaved") == 0) {
+            start = interleaved_worker;
         }
 
         args[i] = i;
