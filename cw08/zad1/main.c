@@ -147,15 +147,15 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    struct timespec start;
-    clock_gettime(CLOCK_MONOTONIC, &start);
-
     threads_count = atoi(argv[1]);
     char *encoded_mode = argv[2];
     char *input_filename = argv[3];
     char *output_filename = argv[4];
 
     load_image(input_filename);
+
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
     histogram_pieces = calloc(threads_count, sizeof(int *));
     for (int i = 0; i < threads_count; i++) {
@@ -187,6 +187,8 @@ int main(int argc, char *argv[]) {
         printf("thread %d took %d microseconds\n", i, time);
     }
 
+    printf("total time: %d microseconds\n", calculate_time(&start));
+
     save_histogram(output_filename);
 
     free(threads);
@@ -200,6 +202,4 @@ int main(int argc, char *argv[]) {
         free(image[y]);
     }
     free(image);
-
-    printf("total time: %d microseconds\n", calculate_time(&start));
 }

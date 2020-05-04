@@ -6,7 +6,7 @@ obj = $(src:.c=.o)
 
 .PHONY: all
 all: main
-	./main 5 sign saturn.ascii.pgm saturn_result.ascii.pgm
+	./main 4 sign saturn.ascii.pgm saturn_result.ascii.pgm
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
