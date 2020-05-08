@@ -43,3 +43,8 @@ cw05/**/producer
 cw08/**/main
 cw08/**/*.o
 cw08/**/*.pgm
+cw08/**/Times.txt
+
+#cw09
+cw09/**/main
+cw09/**/*.o
