@@ -1,3 +1,6 @@
+#define _POSIX_C_SOURCE 200112L
+
+#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -110,27 +113,47 @@ void handle_reply(char* reply) {
 
 int main(int argc, char* argv[]) {
     if (argc != 4) {
-        fprintf(stderr, "Usage: ./client nickname type address");
+        fprintf(stderr, "Usage: ./client nickname type destination");
         return 1;
     }
 
     nickname = argv[1];
-    // char *type = argv[2];
-    char* address = argv[3];
+    char* type = argv[2];
+    char* destination = argv[3];
 
-    int local_socket = socket(AF_UNIX, SOCK_STREAM, 0);
-    server_socket = local_socket;
+    if (strcmp(type, "local") == 0) {
+        server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
 
-    struct sockaddr_un local_sockaddr;
-    memset(&local_sockaddr, 0, sizeof(struct sockaddr_un));
-    local_sockaddr.sun_family = AF_UNIX;
-    strcpy(local_sockaddr.sun_path, address);
+        struct sockaddr_un local_sockaddr;
+        memset(&local_sockaddr, 0, sizeof(struct sockaddr_un));
+        local_sockaddr.sun_family = AF_UNIX;
+        strcpy(local_sockaddr.sun_path, destination);
 
-    connect(local_socket, (struct sockaddr*)&local_sockaddr,
-            sizeof(struct sockaddr_un));
+        connect(server_socket, (struct sockaddr*)&local_sockaddr,
+                sizeof(struct sockaddr_un));
+    } else {
+        struct addrinfo* info;
+
+        struct addrinfo hints;
+        memset(&hints, 0, sizeof(struct addrinfo));
+        hints.ai_family = AF_UNSPEC;
+        hints.ai_socktype = SOCK_STREAM;
+
+        getaddrinfo("localhost", destination, &hints, &info);
+
+        server_socket =
+            socket(info->ai_family, info->ai_socktype, info->ai_protocol);
+        perror("socket");
+
+        connect(server_socket, info->ai_addr, info->ai_addrlen);
+        perror("connect");
+
+        freeaddrinfo(info);
+    }
 
     sprintf(buffer, "add: :%s", nickname);
-    send(local_socket, buffer, MAX_MESSAGE_LENGTH, 0);
-    recv(local_socket, buffer, MAX_MESSAGE_LENGTH, 0);
+    send(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
+    perror("send");
+    recv(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
     handle_reply(buffer);
 }

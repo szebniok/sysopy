@@ -6,7 +6,7 @@ obj = $(src:.c=.o)
 
 .PHONY: all
 all: server
-	./server 123 /tmp/socket
+	./server 1234 /tmp/socket
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

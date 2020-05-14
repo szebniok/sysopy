@@ -1,3 +1,6 @@
+#define _POSIX_C_SOURCE 200112L
+
+#include <netdb.h>
 #include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,28 +20,30 @@ typedef struct {
 client_t* clients[MAX_PLAYERS] = {NULL};
 int clients_count = 0;
 
-int poll_sockets(int local_socket) {
-    struct pollfd* pfds = calloc(1 + clients_count, sizeof(struct pollfd));
+int poll_sockets(int local_socket, int network_socket) {
+    struct pollfd* pfds = calloc(2 + clients_count, sizeof(struct pollfd));
     pfds[0].fd = local_socket;
     pfds[0].events = POLLIN;
+    pfds[1].fd = network_socket;
+    pfds[1].events = POLLIN;
 
     for (int i = 0; i < clients_count; i++) {
-        pfds[i + 1].fd = clients[i]->fd;
-        pfds[i + 1].events = POLLIN;
+        pfds[i + 2].fd = clients[i]->fd;
+        pfds[i + 2].events = POLLIN;
     }
 
-    poll(pfds, clients_count + 1, -1);
+    poll(pfds, clients_count + 2, -1);
 
     int retval;
-    for (int i = 0; i < clients_count + 1; i++) {
+    for (int i = 0; i < clients_count + 2; i++) {
         if (pfds[i].revents & POLLIN) {
             retval = pfds[i].fd;
             break;
         }
     }
 
-    if (retval == local_socket) {
-        retval = accept(local_socket, NULL, NULL);
+    if (retval == local_socket || retval == network_socket) {
+        retval = accept(retval, NULL, NULL);
     }
 
     free(pfds);
@@ -100,32 +105,63 @@ void remove_client(char* nickname) {
     clients_count -= 2;
 }
 
+int setup_local_socket(char* path) {
+    int local_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+
+    struct sockaddr_un local_sockaddr;
+    memset(&local_sockaddr, 0, sizeof(struct sockaddr_un));
+    local_sockaddr.sun_family = AF_UNIX;
+    strcpy(local_sockaddr.sun_path, path);
+
+    unlink(path);
+    bind(local_socket, (struct sockaddr*)&local_sockaddr,
+         sizeof(struct sockaddr_un));
+
+    listen(local_socket, MAX_BACKLOG);
+
+    return local_socket;
+}
+
+int setup_network_socket(char* port) {
+    struct addrinfo* info;
+
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    getaddrinfo(NULL, port, &hints, &info);
+
+    int network_socket =
+        socket(info->ai_family, info->ai_socktype, info->ai_protocol);
+    bind(network_socket, info->ai_addr, info->ai_addrlen);
+    perror("bind");
+
+    listen(network_socket, MAX_BACKLOG);
+    perror("listen");
+
+    freeaddrinfo(info);
+
+    return network_socket;
+}
+
 int main(int argc, char* argv[]) {
     if (argc != 3) {
         fprintf(stderr, "Usage: ./server port path");
         return 1;
     }
 
-    // int port = atoi(argv[1]);
+    char* port = argv[1];
     char* socket_path = argv[2];
 
     srand(time(NULL));
 
-    int local_socket = socket(AF_UNIX, SOCK_STREAM, 0);
-
-    struct sockaddr_un local_sockaddr;
-    memset(&local_sockaddr, 0, sizeof(struct sockaddr_un));
-    local_sockaddr.sun_family = AF_UNIX;
-    strcpy(local_sockaddr.sun_path, socket_path);
-
-    unlink(socket_path);
-    bind(local_socket, (struct sockaddr*)&local_sockaddr,
-         sizeof(struct sockaddr_un));
-
-    listen(local_socket, MAX_BACKLOG);
+    int local_socket = setup_local_socket(socket_path);
+    int network_socket = setup_network_socket(port);
 
     while (1) {
-        int client_fd = poll_sockets(local_socket);
+        int client_fd = poll_sockets(local_socket, network_socket);
 
         char buffer[MAX_MESSAGE_LENGTH + 1];
         recv(client_fd, buffer, MAX_MESSAGE_LENGTH, 0);
