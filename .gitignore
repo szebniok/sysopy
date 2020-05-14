@@ -48,3 +48,8 @@ cw08/**/Times.txt
 #cw09
 cw09/**/main
 cw09/**/*.o
+
+#cw10
+cw10/**/client
+cw10/**/server
+cw10/**/*.o
