@@ -46,18 +46,6 @@ int poll_sockets(int local_socket) {
     return retval;
 }
 
-void add_pfds(int fd) {
-    if (pfds == NULL) {
-        pfds = calloc(1, sizeof(struct pollfd));
-    } else {
-        pfds = realloc(pfds, (nfds + 1) * sizeof(struct pollfd));
-    }
-    pfds[nfds].fd = fd;
-    pfds[nfds].events = POLLIN;
-
-    nfds++;
-}
-
 int get_by_nickname(char* nickname) {
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (clients[i] != NULL && strcmp(clients[i]->nickname, nickname) == 0) {
@@ -89,6 +77,29 @@ int add_client(char* nickname, int fd) {
     return -1;
 }
 
+void remove_client(char* nickname) {
+    int client_index = get_by_nickname(nickname);
+    if (client_index == -1) return;
+
+    int opponent_index = get_opponent(client_index);
+    int first_index =
+        client_index < opponent_index ? client_index : opponent_index;
+
+    free(clients[first_index]->nickname);
+    free(clients[first_index]);
+    free(clients[first_index + 1]->nickname);
+    free(clients[first_index + 1]);
+
+    if (clients_count == MAX_PLAYERS) {
+        clients[first_index] = NULL;
+        clients[first_index + 1] = NULL;
+    } else {
+        clients[first_index] = clients[clients_count - 2];
+        clients[first_index + 1] = clients[clients_count - 1];
+    }
+    clients_count -= 2;
+}
+
 int main(int argc, char* argv[]) {
     if (argc != 3) {
         fprintf(stderr, "Usage: ./server port path");
@@ -112,7 +123,6 @@ int main(int argc, char* argv[]) {
          sizeof(struct sockaddr_un));
 
     listen(local_socket, MAX_BACKLOG);
-    add_pfds(local_socket);
 
     while (1) {
         int client_fd = poll_sockets(local_socket);
@@ -155,6 +165,9 @@ int main(int argc, char* argv[]) {
             sprintf(buffer, "move:%d", move);
             send(clients[get_opponent(player)]->fd, buffer, MAX_MESSAGE_LENGTH,
                  0);
+        }
+        if (strcmp(cmd, "quit") == 0) {
+            remove_client(nickname);
         }
     }
 }

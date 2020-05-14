@@ -23,6 +23,10 @@ void check_win_condition() {
         } else {
             puts("You have lost :(");
         }
+
+        sprintf(buffer, "quit: :%s", nickname);
+        send(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
+
         exit(0);
     }
 }
