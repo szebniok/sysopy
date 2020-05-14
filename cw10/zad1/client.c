@@ -16,6 +16,8 @@ board_t board;
 void handle_reply(char* reply);
 
 void check_win_condition() {
+    // check for a win
+    int is_won = 0;
     board_object winner = get_winner(&board);
     if (winner != EMPTY) {
         if ((is_o && winner == O) || (!is_o && winner == X)) {
@@ -24,6 +26,23 @@ void check_win_condition() {
             puts("You have lost :(");
         }
 
+        is_won = 1;
+    }
+
+    // check for a draw
+    int is_drawn = 1;
+    for (int i = 0; i < 9; i++) {
+        if (board.objects[i] == EMPTY) {
+            is_drawn = 0;
+            break;
+        }
+    }
+
+    if (is_drawn && !is_won) {
+        puts("Game ended in a draw");
+    }
+
+    if (is_won || is_drawn) {
         sprintf(buffer, "quit: :%s", nickname);
         send(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
 
@@ -35,7 +54,7 @@ void get_move() {
     char symbols[3] = {' ', 'O', 'X'};
     for (int y = 0; y < 3; y++) {
         for (int x = 0; x < 3; x++) {
-            symbols[0] = y * 3 + x + '0';
+            symbols[0] = y * 3 + x + 1 + '0';
             printf("|%c|", symbols[board.objects[y * 3 + x]]);
         }
         puts("\n---------");
@@ -46,8 +65,9 @@ void get_move() {
     if (is_o == board.o_move) {
         int move;
         do {
-            printf("Enter next move: ");
+            printf("Enter next move (%c): ", is_o ? 'O' : 'X');
             scanf("%d", &move);
+            move--;
         } while (!make_move(&board, move));
 
         sprintf(buffer, "move:%d:%s", move, nickname);
