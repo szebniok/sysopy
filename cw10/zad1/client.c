@@ -17,6 +17,10 @@ char* nickname;
 
 board_t board;
 
+typedef enum { START, WAIT_FOR_ENEMY, WAIT_FOR_MOVE, MOVE, QUIT } state_t;
+
+state_t state = START;
+
 void handle_reply(char* reply);
 
 void quit() {
@@ -26,7 +30,7 @@ void quit() {
     exit(0);
 }
 
-void check_win_condition() {
+void check_board_status() {
     // check for a win
     int is_won = 0;
     board_object winner = get_winner(&board);
@@ -37,7 +41,7 @@ void check_win_condition() {
             puts("You have lost :(");
         }
 
-        is_won = 1;
+        state = QUIT;
     }
 
     // check for a draw
@@ -54,11 +58,16 @@ void check_win_condition() {
     }
 
     if (is_won || is_drawn) {
-        quit();
+        state = QUIT;
     }
 }
 
-void get_move() {
+void split_reply(char* reply, char** cmd, char** arg) {
+    *cmd = strtok(reply, ":");
+    *arg = strtok(NULL, ":");
+}
+
+void draw_board() {
     char symbols[3] = {' ', 'O', 'X'};
     for (int y = 0; y < 3; y++) {
         for (int x = 0; x < 3; x++) {
@@ -67,10 +76,52 @@ void get_move() {
         }
         puts("\n---------");
     }
+}
 
-    check_win_condition();
+void game_loop() {
+    char *cmd, *arg;
 
-    if (is_o == board.o_move) {
+    printf("state: %d\n", state);
+
+    if (state == START) {
+        recv(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
+        perror("recv");
+        split_reply(buffer, &cmd, &arg);
+
+        if (strcmp(arg, "name_taken") == 0) {
+            puts("This nickname is already taken");
+            exit(1);
+        } else if (strcmp(arg, "no_enemy") == 0) {
+            puts("Game will begin as soon as the other player joins the game");
+            state = WAIT_FOR_ENEMY;
+        } else {
+            board = new_board();
+            is_o = arg[0] == 'O';
+            state = is_o ? MOVE : WAIT_FOR_MOVE;
+        }
+    } else if (state == WAIT_FOR_ENEMY) {
+        recv(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
+        split_reply(buffer, &cmd, &arg);
+
+        board = new_board();
+        is_o = arg[0] == 'O';
+        state = is_o ? MOVE : WAIT_FOR_MOVE;
+    } else if (state == WAIT_FOR_MOVE) {
+        draw_board();
+        puts("Waiting for enemy to make a move");
+
+        recv(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
+        split_reply(buffer, &cmd, &arg);
+
+        int move = atoi(arg);
+        make_move(&board, move);
+        check_board_status();
+        if (state != QUIT) {
+            state = MOVE;
+        }
+    } else if (state == MOVE) {
+        draw_board();
+
         int move;
         do {
             printf("Enter next move (%c): ", is_o ? 'O' : 'X');
@@ -78,45 +129,19 @@ void get_move() {
             move--;
         } while (!make_move(&board, move));
 
+        draw_board();
+
         sprintf(buffer, "move:%d:%s", move, nickname);
-        puts(buffer);
         send(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
-        check_win_condition();
-        get_move();
-    } else {
-        puts("Waiting for enemy to make a move...");
-        recv(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
-        handle_reply(buffer);
-    }
-}
 
-void handle_reply(char* reply) {
-    char* cmd = strtok(reply, ":");
-    char* arg = strtok(NULL, ":");
-
-    if (strcmp(cmd, "add") == 0) {
-        if (strcmp(arg, "name_taken") == 0) {
-            puts("This nickname is already taken");
-            exit(1);
-        } else if (strcmp(arg, "no_enemy") == 0) {
-            puts("Game will begin as soon as the other player joins the game");
-            recv(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
-            handle_reply(buffer);
-        } else if (arg[0] == 'X' || arg[0] == 'O') {
-            board = new_board();
-            is_o = arg[0] == 'O';
-            get_move();
+        check_board_status();
+        if (state != QUIT) {
+            state = WAIT_FOR_MOVE;
         }
-    }
-    if (strcmp(cmd, "move") == 0) {
-        int move = atoi(arg);
-        make_move(&board, move);
-        get_move();
-    }
-    if (strcmp(cmd, "quit") == 0) {
-        puts("Other player left the game :(");
+    } else if (state == QUIT) {
         quit();
     }
+    game_loop();
 }
 
 int main(int argc, char* argv[]) {
@@ -158,9 +183,8 @@ int main(int argc, char* argv[]) {
 
         freeaddrinfo(info);
     }
-
     sprintf(buffer, "add: :%s", nickname);
     send(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
-    recv(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
-    handle_reply(buffer);
+
+    game_loop();
 }
