@@ -35,6 +35,7 @@ pthread_mutex_t reply_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t reply_cond = PTHREAD_COND_INITIALIZER;
 
 void quit() {
+    char buffer[MAX_MESSAGE_LENGTH + 1];
     sprintf(buffer, "quit: :%s", nickname);
     send(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
 
@@ -52,7 +53,7 @@ void check_board_status() {
             puts("You have lost :(");
         }
 
-        state = QUIT;
+        is_won = 1;
     }
 
     // check for a draw
@@ -140,6 +141,7 @@ void game_loop() {
 
         draw_board();
 
+        char buffer[MAX_MESSAGE_LENGTH + 1];
         sprintf(buffer, "move:%d:%s", move, nickname);
         send(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
 
@@ -192,6 +194,7 @@ int main(int argc, char* argv[]) {
 
         freeaddrinfo(info);
     }
+    char buffer[MAX_MESSAGE_LENGTH + 1];
     sprintf(buffer, "add: :%s", nickname);
     send(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
 
@@ -214,6 +217,9 @@ int main(int argc, char* argv[]) {
         } else if (strcmp(cmd, "quit") == 0) {
             state = QUIT;
             exit(0);
+        } else if (strcmp(cmd, "ping") == 0) {
+            sprintf(buffer, "pong: :%s", nickname);
+            send(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
         }
         pthread_cond_signal(&reply_cond);
         pthread_mutex_unlock(&reply_mutex);

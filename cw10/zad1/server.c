@@ -2,6 +2,7 @@
 
 #include <netdb.h>
 #include <poll.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,10 +16,13 @@
 typedef struct {
     char* nickname;
     int fd;
+    int is_alive;
 } client_t;
 
 client_t* clients[MAX_PLAYERS] = {NULL};
 int clients_count = 0;
+
+pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int poll_sockets(int local_socket, int network_socket) {
     struct pollfd* pfds = calloc(2 + clients_count, sizeof(struct pollfd));
@@ -27,10 +31,12 @@ int poll_sockets(int local_socket, int network_socket) {
     pfds[1].fd = network_socket;
     pfds[1].events = POLLIN;
 
+    pthread_mutex_lock(&clients_mutex);
     for (int i = 0; i < clients_count; i++) {
         pfds[i + 2].fd = clients[i]->fd;
         pfds[i + 2].events = POLLIN;
     }
+    pthread_mutex_unlock(&clients_mutex);
 
     poll(pfds, clients_count + 2, -1);
 
@@ -71,6 +77,7 @@ int add_client(char* nickname, int fd) {
             new_client->nickname = calloc(MAX_MESSAGE_LENGTH, sizeof(char));
             strcpy(new_client->nickname, nickname);
             new_client->fd = fd;
+            new_client->is_alive = 1;
 
             clients[i] = new_client;
             clients_count++;
@@ -83,33 +90,48 @@ int add_client(char* nickname, int fd) {
 }
 
 void remove_client(char* nickname) {
+    printf("removing client: %s\n", nickname);
     int client_index = get_by_nickname(nickname);
     if (client_index == -1) return;
 
     free(clients[client_index]->nickname);
     free(clients[client_index]);
+    clients[client_index] = NULL;
+    clients_count--;
 
     int opponent_index = get_opponent(client_index);
 
     if (clients[opponent_index] != NULL) {
+        puts("removing opponent");
         send(clients[opponent_index]->fd, "quit: ", MAX_MESSAGE_LENGTH, 0);
         free(clients[opponent_index]->nickname);
         free(clients[opponent_index]);
+        clients[opponent_index] = NULL;
+        clients_count--;
+    }
+}
+
+void pinging_loop() {
+    puts("pinging");
+    pthread_mutex_lock(&clients_mutex);
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (clients[i] != NULL && !clients[i]->is_alive) {
+            printf("removing ping: %s\n", clients[i]->nickname);
+            remove_client(clients[i]->nickname);
+        }
     }
 
-    int first_index =
-        opponent_index == -1
-            ? client_index
-            : client_index < opponent_index ? client_index : opponent_index;
-
-    if (clients_count == MAX_PLAYERS) {
-        clients[first_index] = NULL;
-        clients[first_index + 1] = NULL;
-    } else {
-        clients[first_index] = clients[clients_count - 2];
-        clients[first_index + 1] = clients[clients_count - 1];
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (clients[i] != NULL) {
+            puts("sending");
+            send(clients[i]->fd, "ping: ", MAX_MESSAGE_LENGTH, 0);
+            clients[i]->is_alive = 0;
+        }
     }
-    clients_count -= 2;
+    pthread_mutex_unlock(&clients_mutex);
+
+    sleep(2);
+    pinging_loop();
 }
 
 int setup_local_socket(char* path) {
@@ -165,6 +187,9 @@ int main(int argc, char* argv[]) {
     int local_socket = setup_local_socket(socket_path);
     int network_socket = setup_network_socket(port);
 
+    pthread_t t;
+    pthread_create(&t, NULL, (void* (*)(void*))pinging_loop, NULL);
+
     while (1) {
         int client_fd = poll_sockets(local_socket, network_socket);
 
@@ -176,6 +201,7 @@ int main(int argc, char* argv[]) {
         char* arg = strtok(NULL, ":");
         char* nickname = strtok(NULL, ":");
 
+        pthread_mutex_lock(&clients_mutex);
         if (strcmp(cmd, "add") == 0) {
             int index = add_client(nickname, client_fd);
 
@@ -206,5 +232,12 @@ int main(int argc, char* argv[]) {
         if (strcmp(cmd, "quit") == 0) {
             remove_client(nickname);
         }
+        if (strcmp(cmd, "pong") == 0) {
+            int player = get_by_nickname(nickname);
+            if (player != -1) {
+                clients[player]->is_alive = 1;
+            }
+        }
+        pthread_mutex_unlock(&clients_mutex);
     }
 }
