@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200112L
 
 #include <netdb.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +18,13 @@ char* nickname;
 board_t board;
 
 void handle_reply(char* reply);
+
+void quit() {
+    sprintf(buffer, "quit: :%s", nickname);
+    send(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
+
+    exit(0);
+}
 
 void check_win_condition() {
     // check for a win
@@ -46,10 +54,7 @@ void check_win_condition() {
     }
 
     if (is_won || is_drawn) {
-        sprintf(buffer, "quit: :%s", nickname);
-        send(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
-
-        exit(0);
+        quit();
     }
 }
 
@@ -81,7 +86,6 @@ void get_move() {
     } else {
         puts("Waiting for enemy to make a move...");
         recv(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
-        perror("recv");
         handle_reply(buffer);
     }
 }
@@ -109,6 +113,10 @@ void handle_reply(char* reply) {
         make_move(&board, move);
         get_move();
     }
+    if (strcmp(cmd, "quit") == 0) {
+        puts("Other player left the game :(");
+        quit();
+    }
 }
 
 int main(int argc, char* argv[]) {
@@ -120,6 +128,8 @@ int main(int argc, char* argv[]) {
     nickname = argv[1];
     char* type = argv[2];
     char* destination = argv[3];
+
+    signal(SIGINT, quit);
 
     if (strcmp(type, "local") == 0) {
         server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -143,17 +153,14 @@ int main(int argc, char* argv[]) {
 
         server_socket =
             socket(info->ai_family, info->ai_socktype, info->ai_protocol);
-        perror("socket");
 
         connect(server_socket, info->ai_addr, info->ai_addrlen);
-        perror("connect");
 
         freeaddrinfo(info);
     }
 
     sprintf(buffer, "add: :%s", nickname);
     send(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
-    perror("send");
     recv(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
     handle_reply(buffer);
 }

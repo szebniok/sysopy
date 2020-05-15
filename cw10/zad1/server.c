@@ -86,14 +86,21 @@ void remove_client(char* nickname) {
     int client_index = get_by_nickname(nickname);
     if (client_index == -1) return;
 
-    int opponent_index = get_opponent(client_index);
-    int first_index =
-        client_index < opponent_index ? client_index : opponent_index;
+    free(clients[client_index]->nickname);
+    free(clients[client_index]);
 
-    free(clients[first_index]->nickname);
-    free(clients[first_index]);
-    free(clients[first_index + 1]->nickname);
-    free(clients[first_index + 1]);
+    int opponent_index = get_opponent(client_index);
+
+    if (clients[opponent_index] != NULL) {
+        send(clients[opponent_index]->fd, "quit: ", MAX_MESSAGE_LENGTH, 0);
+        free(clients[opponent_index]->nickname);
+        free(clients[opponent_index]);
+    }
+
+    int first_index =
+        opponent_index == -1
+            ? client_index
+            : client_index < opponent_index ? client_index : opponent_index;
 
     if (clients_count == MAX_PLAYERS) {
         clients[first_index] = NULL;
@@ -136,10 +143,8 @@ int setup_network_socket(char* port) {
     int network_socket =
         socket(info->ai_family, info->ai_socktype, info->ai_protocol);
     bind(network_socket, info->ai_addr, info->ai_addrlen);
-    perror("bind");
 
     listen(network_socket, MAX_BACKLOG);
-    perror("listen");
 
     freeaddrinfo(info);
 
@@ -175,22 +180,18 @@ int main(int argc, char* argv[]) {
             int index = add_client(nickname, client_fd);
 
             if (index == -1) {
-                strcpy(buffer, "add:name_taken");
-                send(client_fd, buffer, MAX_MESSAGE_LENGTH, 0);
+                send(client_fd, "add:name_taken", MAX_MESSAGE_LENGTH, 0);
                 close(client_fd);
             } else if (index % 2 == 0) {
-                strcpy(buffer, "add:no_enemy");
-                send(client_fd, buffer, MAX_MESSAGE_LENGTH, 0);
+                send(client_fd, "add:no_enemy", MAX_MESSAGE_LENGTH, 0);
             } else {
                 int waiting_client_goes_first = rand() % 2;
                 int first_player_index = index - waiting_client_goes_first;
                 int second_player_index = get_opponent(first_player_index);
 
-                strcpy(buffer, "add:O");
-                send(clients[first_player_index]->fd, buffer,
+                send(clients[first_player_index]->fd, "add:O",
                      MAX_MESSAGE_LENGTH, 0);
-                strcpy(buffer, "add:X");
-                send(clients[second_player_index]->fd, buffer,
+                send(clients[second_player_index]->fd, "add:X",
                      MAX_MESSAGE_LENGTH, 0);
             }
         }
