@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200112L
 
 #include <netdb.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,11 +18,21 @@ char* nickname;
 
 board_t board;
 
-typedef enum { START, WAIT_FOR_ENEMY, WAIT_FOR_MOVE, MOVE, QUIT } state_t;
+typedef enum {
+    START,
+    WAIT_FOR_ENEMY,
+    WAIT_FOR_MOVE,
+    PROCESS_ENEMY_MOVE,
+    MOVE,
+    QUIT
+} state_t;
 
 state_t state = START;
 
-void handle_reply(char* reply);
+char *cmd, *arg;
+
+pthread_mutex_t reply_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t reply_cond = PTHREAD_COND_INITIALIZER;
 
 void quit() {
     sprintf(buffer, "quit: :%s", nickname);
@@ -62,9 +73,9 @@ void check_board_status() {
     }
 }
 
-void split_reply(char* reply, char** cmd, char** arg) {
-    *cmd = strtok(reply, ":");
-    *arg = strtok(NULL, ":");
+void split_reply(char* reply) {
+    cmd = strtok(reply, ":");
+    arg = strtok(NULL, ":");
 }
 
 void draw_board() {
@@ -79,15 +90,7 @@ void draw_board() {
 }
 
 void game_loop() {
-    char *cmd, *arg;
-
-    printf("state: %d\n", state);
-
     if (state == START) {
-        recv(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
-        perror("recv");
-        split_reply(buffer, &cmd, &arg);
-
         if (strcmp(arg, "name_taken") == 0) {
             puts("This nickname is already taken");
             exit(1);
@@ -100,19 +103,25 @@ void game_loop() {
             state = is_o ? MOVE : WAIT_FOR_MOVE;
         }
     } else if (state == WAIT_FOR_ENEMY) {
-        recv(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
-        split_reply(buffer, &cmd, &arg);
+        pthread_mutex_lock(&reply_mutex);
+        while (state != START && state != QUIT) {
+            pthread_cond_wait(&reply_cond, &reply_mutex);
+        }
+        pthread_mutex_unlock(&reply_mutex);
 
         board = new_board();
         is_o = arg[0] == 'O';
         state = is_o ? MOVE : WAIT_FOR_MOVE;
     } else if (state == WAIT_FOR_MOVE) {
-        draw_board();
         puts("Waiting for enemy to make a move");
 
-        recv(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
-        split_reply(buffer, &cmd, &arg);
+        pthread_mutex_lock(&reply_mutex);
+        while (state != PROCESS_ENEMY_MOVE && state != QUIT) {
+            pthread_cond_wait(&reply_cond, &reply_mutex);
+        }
+        pthread_mutex_unlock(&reply_mutex);
 
+    } else if (state == PROCESS_ENEMY_MOVE) {
         int move = atoi(arg);
         make_move(&board, move);
         check_board_status();
@@ -186,5 +195,27 @@ int main(int argc, char* argv[]) {
     sprintf(buffer, "add: :%s", nickname);
     send(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
 
-    game_loop();
+    int game_thread_running = 0;
+
+    while (1) {
+        recv(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
+        split_reply(buffer);
+
+        pthread_mutex_lock(&reply_mutex);
+        if (strcmp(cmd, "add") == 0) {
+            state = START;
+            if (!game_thread_running) {
+                pthread_t t;
+                pthread_create(&t, NULL, (void* (*)(void*))game_loop, NULL);
+                game_thread_running = 1;
+            }
+        } else if (strcmp(cmd, "move") == 0) {
+            state = PROCESS_ENEMY_MOVE;
+        } else if (strcmp(cmd, "quit") == 0) {
+            state = QUIT;
+            exit(0);
+        }
+        pthread_cond_signal(&reply_cond);
+        pthread_mutex_unlock(&reply_mutex);
+    }
 }
