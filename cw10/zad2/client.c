@@ -8,6 +8,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <unistd.h>
 
 #include "common.h"
 
@@ -167,25 +168,37 @@ int main(int argc, char* argv[]) {
 
     signal(SIGINT, quit);
 
-    if (strcmp(type, "local") == 0) {
+    int is_local = strcmp(type, "local") == 0;
+    struct sockaddr_un local_sockaddr;
+    int binded_socket;
+
+    if (is_local) {
         server_socket = socket(AF_UNIX, SOCK_DGRAM, 0);
 
-        struct sockaddr_un local_sockaddr;
         memset(&local_sockaddr, 0, sizeof(struct sockaddr_un));
         local_sockaddr.sun_family = AF_UNIX;
         strcpy(local_sockaddr.sun_path, destination);
 
         connect(server_socket, (struct sockaddr*)&local_sockaddr,
                 sizeof(struct sockaddr_un));
+
+        binded_socket = socket(AF_UNIX, SOCK_DGRAM, 0);
+        struct sockaddr_un binded_sockaddr;
+        memset(&binded_sockaddr, 0, sizeof(struct sockaddr_un));
+        binded_sockaddr.sun_family = AF_UNIX;
+        sprintf(binded_sockaddr.sun_path, "/tmp/%d", getpid());
+
+        bind(binded_socket, (struct sockaddr*)&binded_sockaddr,
+             sizeof(struct sockaddr_un));
     } else {
         struct addrinfo* info;
 
         struct addrinfo hints;
         memset(&hints, 0, sizeof(struct addrinfo));
-        hints.ai_family = AF_UNSPEC;
+        hints.ai_family = AF_INET;
         hints.ai_socktype = SOCK_DGRAM;
 
-        getaddrinfo("localhost", destination, &hints, &info);
+        getaddrinfo("127.0.0.1", destination, &hints, &info);
 
         server_socket =
             socket(info->ai_family, info->ai_socktype, info->ai_protocol);
@@ -196,12 +209,21 @@ int main(int argc, char* argv[]) {
     }
     char buffer[MAX_MESSAGE_LENGTH + 1];
     sprintf(buffer, "add: :%s", nickname);
-    send(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
+    if (is_local) {
+        sendto(binded_socket, buffer, MAX_MESSAGE_LENGTH, 0,
+               (struct sockaddr*)&local_sockaddr, sizeof(struct sockaddr_un));
+    } else {
+        send(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
+    }
 
     int game_thread_running = 0;
 
     while (1) {
-        recv(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
+        if (is_local) {
+            recv(binded_socket, buffer, MAX_MESSAGE_LENGTH, 0);
+        } else {
+            recv(server_socket, buffer, MAX_MESSAGE_LENGTH, 0);
+        }
         split_reply(buffer);
 
         pthread_mutex_lock(&reply_mutex);

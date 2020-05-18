@@ -57,23 +57,36 @@ int get_opponent(int index) { return index % 2 == 0 ? index + 1 : index - 1; }
 int add_client(char* nickname, struct sockaddr addr, int fd) {
     if (get_by_nickname(nickname) != -1) return -1;
 
-    for (int i = 0; i < MAX_PLAYERS; i++) {
-        if (clients[i] == NULL) {
-            client_t* new_client = calloc(1, sizeof(client_t));
-            new_client->nickname = calloc(MAX_MESSAGE_LENGTH, sizeof(char));
-            strcpy(new_client->nickname, nickname);
-            new_client->addr = addr;
-            new_client->fd = fd;
-            new_client->is_alive = 1;
-
-            clients[i] = new_client;
-            clients_count++;
-
-            return i;
+    int index = -1;
+    // check if there is another player waiting for an opponent
+    for (int i = 0; i < MAX_PLAYERS; i += 2) {
+        if (clients[i] != NULL && clients[i + 1] == NULL) {
+            index = i + 1;
+            break;
         }
     }
 
-    return -1;
+    // if no opponent avaible, get first free place
+    for (int i = 0; i < MAX_PLAYERS && index == -1; i++) {
+        if (clients[i] == NULL) {
+            index = i;
+            break;
+        }
+    }
+
+    if (index != -1) {
+        client_t* new_client = calloc(1, sizeof(client_t));
+        new_client->nickname = calloc(MAX_MESSAGE_LENGTH, sizeof(char));
+        strcpy(new_client->nickname, nickname);
+        new_client->addr = addr;
+        new_client->fd = fd;
+        new_client->is_alive = 1;
+
+        clients[index] = new_client;
+        clients_count++;
+    }
+
+    return index;
 }
 
 void remove_client(char* nickname) {
@@ -134,8 +147,6 @@ int setup_local_socket(char* path) {
     bind(local_socket, (struct sockaddr*)&local_sockaddr,
          sizeof(struct sockaddr_un));
 
-    listen(local_socket, MAX_BACKLOG);
-
     return local_socket;
 }
 
@@ -144,7 +155,7 @@ int setup_network_socket(char* port) {
 
     struct addrinfo hints;
     memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_UNSPEC;
+    hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_PASSIVE;
 
@@ -153,8 +164,6 @@ int setup_network_socket(char* port) {
     int network_socket =
         socket(info->ai_family, info->ai_socktype, info->ai_protocol);
     bind(network_socket, info->ai_addr, info->ai_addrlen);
-
-    listen(network_socket, MAX_BACKLOG);
 
     freeaddrinfo(info);
 
@@ -183,7 +192,7 @@ int main(int argc, char* argv[]) {
 
         char buffer[MAX_MESSAGE_LENGTH + 1];
         struct sockaddr from_addr;
-        socklen_t from_length;
+        socklen_t from_length = sizeof(struct sockaddr);
         recvfrom(socket_fd, buffer, MAX_MESSAGE_LENGTH, 0, &from_addr,
                  &from_length);
         puts(buffer);
@@ -198,10 +207,10 @@ int main(int argc, char* argv[]) {
 
             if (index == -1) {
                 sendto(socket_fd, "add:name_taken", MAX_MESSAGE_LENGTH, 0,
-                       &from_addr, sizeof(struct addrinfo));
+                       (struct sockaddr*)&from_addr, sizeof(struct addrinfo));
             } else if (index % 2 == 0) {
                 sendto(socket_fd, "add:no_enemy", MAX_MESSAGE_LENGTH, 0,
-                       &from_addr, sizeof(struct addrinfo));
+                       (struct sockaddr*)&from_addr, sizeof(struct addrinfo));
             } else {
                 int waiting_client_goes_first = rand() % 2;
                 int first_player_index = index - waiting_client_goes_first;

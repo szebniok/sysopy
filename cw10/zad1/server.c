@@ -71,22 +71,35 @@ int get_opponent(int index) { return index % 2 == 0 ? index + 1 : index - 1; }
 int add_client(char* nickname, int fd) {
     if (get_by_nickname(nickname) != -1) return -1;
 
-    for (int i = 0; i < MAX_PLAYERS; i++) {
-        if (clients[i] == NULL) {
-            client_t* new_client = calloc(1, sizeof(client_t));
-            new_client->nickname = calloc(MAX_MESSAGE_LENGTH, sizeof(char));
-            strcpy(new_client->nickname, nickname);
-            new_client->fd = fd;
-            new_client->is_alive = 1;
-
-            clients[i] = new_client;
-            clients_count++;
-
-            return i;
+    int index = -1;
+    // check if there is another player waiting for an opponent
+    for (int i = 0; i < MAX_PLAYERS; i += 2) {
+        if (clients[i] != NULL && clients[i + 1] == NULL) {
+            index = i + 1;
+            break;
         }
     }
 
-    return -1;
+    // if no opponent avaible, get first free place
+    for (int i = 0; i < MAX_PLAYERS && index == -1; i++) {
+        if (clients[i] == NULL) {
+            index = i;
+            break;
+        }
+    }
+
+    if (index != -1) {
+        client_t* new_client = calloc(1, sizeof(client_t));
+        new_client->nickname = calloc(MAX_MESSAGE_LENGTH, sizeof(char));
+        strcpy(new_client->nickname, nickname);
+        new_client->fd = fd;
+        new_client->is_alive = 1;
+
+        clients[index] = new_client;
+        clients_count++;
+    }
+
+    return index;
 }
 
 void remove_client(char* nickname) {
@@ -103,7 +116,6 @@ void remove_client(char* nickname) {
 
     if (clients[opponent_index] != NULL) {
         puts("removing opponent");
-        send(clients[opponent_index]->fd, "quit: ", MAX_MESSAGE_LENGTH, 0);
         free(clients[opponent_index]->nickname);
         free(clients[opponent_index]);
         clients[opponent_index] = NULL;
